@@ -1,0 +1,462 @@
+# Skill: 数据库架构设计
+
+> 基于 Google、Microsoft、AWS 最佳实践的数据库架构设计技能
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🟢 低（核心技能）
+
+---
+
+## 📋 前置技能
+
+- ✅ [architecture-principles.skill](../architecture-principles.skill) - 架构设计原则
+- ✅ [backend-architecture.skill](../backend-architecture.skill) - 后端架构设计
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[Google Cloud Database Best Practices](https://cloud.google.com/architecture/best-practices-for-operational-databases)** - Google 数据库最佳实践
+- **[Microsoft SQL Best Practices](https://docs.microsoft.com/en-us/sql/)** - Microsoft SQL 最佳实践
+- **[AWS Database Best Practices](https://aws.amazon.com/architecture/database/)** - AWS 数据库最佳实践
+- **[Martin Fowler - Database Patterns](https://martinfowler.com/)** - 数据库模式
+
+### 行业最佳实践
+
+- **Database per Service** - 每库每服务
+- **CQRS (Command Query Responsibility Segregation)** - 命令查询职责分离
+- **Event Sourcing** - 事件溯源
+- **Sharding** - 分库分表
+
+---
+
+## 🏛️ 数据库模式
+
+### 数据库每服务
+
+```markdown
+### 模式描述
+- 每个微服务有自己的数据库
+- 服务间不共享数据库
+- 通过 API 访问其他服务数据
+
+### 优点
+- 服务独立部署
+- 技术栈多样性
+- 故障隔离
+- 团队自治
+
+### 缺点
+- 数据一致性挑战
+- 分布式事务复杂
+- 运维成本高
+
+### 适用场景
+- 微服务架构
+- 需要独立扩展
+- 团队规模大
+```
+
+### CQRS 模式
+
+```markdown
+### 模式描述
+- 读写分离
+- 命令模型（写）
+- 查询模型（读）
+
+### 优点
+- 读写独立优化
+- 可扩展性强
+- 性能提升
+
+### 缺点
+- 数据一致性延迟
+- 架构复杂性
+- 维护成本高
+
+### 适用场景
+- 读写比例悬殊
+- 高并发场景
+- 复杂查询需求
+```
+
+```python
+# CQRS 实现示例
+class CommandService:
+    """写服务"""
+    def __init__(self, write_db):
+        self.write_db = write_db
+    
+    def create_user(self, data):
+        # 写入主数据库
+        user = User(**data)
+        self.write_db.add(user)
+        self.write_db.commit()
+        return user
+
+class QueryService:
+    """读服务"""
+    def __init__(self, read_db):
+        self.read_db = read_db
+    
+    def get_user(self, user_id):
+        # 从读库查询
+        return self.read_db.query(User).get(user_id)
+    
+    def search_users(self, keyword):
+        # 使用 Elasticsearch 等搜索引擎
+        return self.read_db.search(keyword)
+```
+
+---
+
+## 📊 数据库设计原则
+
+### 范式化设计
+
+```markdown
+### 第一范式 (1NF)
+- 列不可再分
+- 每行唯一
+- 列同质
+
+### 第二范式 (2NF)
+- 满足 1NF
+- 非主键完全依赖主键
+
+### 第三范式 (3NF)
+- 满足 2NF
+- 非主键不传递依赖
+```
+
+```sql
+-- ❌ 不符合范式
+CREATE TABLE orders (
+    id INT PRIMARY KEY,
+    customer_name VARCHAR(100),
+    customer_email VARCHAR(100),
+    product_name VARCHAR(100),
+    product_price DECIMAL
+);
+
+-- ✅ 符合范式
+CREATE TABLE customers (
+    id INT PRIMARY KEY,
+    name VARCHAR(100),
+    email VARCHAR(100)
+);
+
+CREATE TABLE products (
+    id INT PRIMARY KEY,
+    name VARCHAR(100),
+    price DECIMAL
+);
+
+CREATE TABLE orders (
+    id INT PRIMARY KEY,
+    customer_id INT REFERENCES customers(id),
+    product_id INT REFERENCES products(id)
+);
+```
+
+### 反范式化
+
+```markdown
+### 适用场景
+- 读多写少
+- 性能要求高
+- 连接成本高
+
+### 策略
+- 冗余字段
+- 预计算
+- 物化视图
+```
+
+```sql
+-- 反范式化示例
+CREATE TABLE orders (
+    id INT PRIMARY KEY,
+    customer_id INT,
+    customer_name VARCHAR(100),  -- 冗余
+    customer_email VARCHAR(100), -- 冗余
+    product_id INT,
+    product_name VARCHAR(100),   -- 冗余
+    product_price DECIMAL,       -- 冗余
+    total_amount DECIMAL         -- 预计算
+);
+```
+
+---
+
+## 🔍 索引设计
+
+### 索引类型
+
+```sql
+-- B-Tree 索引（默认）
+CREATE INDEX idx_user_email ON users(email);
+
+-- 唯一索引
+CREATE UNIQUE INDEX idx_user_email_unique ON users(email);
+
+-- 复合索引
+CREATE INDEX idx_user_name_email ON users(name, email);
+
+-- 部分索引
+CREATE INDEX idx_active_users ON users(email) WHERE is_active = true;
+
+-- 表达式索引
+CREATE INDEX idx_user_email_lower ON users(LOWER(email));
+```
+
+### 索引最佳实践
+
+```markdown
+### 创建索引
+- 高频查询字段
+- WHERE 子句字段
+- JOIN 字段
+- ORDER BY 字段
+
+### 避免索引
+- 低基数字段（如性别）
+- 频繁更新字段
+- 小表
+
+### 索引维护
+- 定期分析索引
+- 删除未使用索引
+- 监控索引大小
+```
+
+---
+
+## 📈 性能优化
+
+### 查询优化
+
+```sql
+-- ❌ 慢查询
+SELECT * FROM orders WHERE YEAR(created_at) = 2026;
+
+-- ✅ 优化查询
+SELECT * FROM orders 
+WHERE created_at >= '2026-01-01' 
+  AND created_at < '2027-01-01';
+
+-- ❌ N+1 查询
+for user in users:
+    orders = db.query("SELECT * FROM orders WHERE user_id = ?", user.id)
+
+-- ✅ 使用 JOIN
+SELECT u.*, o.* 
+FROM users u
+LEFT JOIN orders o ON u.id = o.user_id;
+```
+
+### 连接池配置
+
+```python
+# SQLAlchemy 连接池配置
+from sqlalchemy import create_engine
+
+engine = create_engine(
+    DATABASE_URL,
+    pool_size=20,           # 连接池大小
+    max_overflow=10,        # 最大溢出连接数
+    pool_pre_ping=True,     # 连接前 ping 测试
+    pool_recycle=3600,      # 连接回收时间
+    pool_timeout=30         # 获取连接超时
+)
+```
+
+### 缓存策略
+
+```python
+# Redis 缓存
+import redis
+from functools import wraps
+
+class Cache:
+    def __init__(self, redis_url):
+        self.redis = redis.from_url(redis_url)
+    
+    def cache(self, key_prefix, expire=300):
+        def decorator(func):
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                key = f"{key_prefix}:{args}:{kwargs}"
+                cached = self.redis.get(key)
+                if cached:
+                    return json.loads(cached)
+                
+                result = func(*args, **kwargs)
+                self.redis.setex(key, expire, json.dumps(result))
+                return result
+            return wrapper
+        return decorator
+
+# 使用
+cache = Cache(settings.REDIS_URL)
+
+@cache.cache("user", expire=600)
+def get_user(user_id):
+    return db.query(User).get(user_id)
+```
+
+---
+
+## 🔒 数据安全
+
+### 加密存储
+
+```python
+# SQLAlchemy 加密字段
+from sqlalchemy_utils import EncryptedType
+
+class User(Base):
+    __tablename__ = "users"
+    
+    id = Column(Integer, primary_key=True)
+    email = Column(String)
+    ssn = Column(EncryptedType(String, settings.ENCRYPTION_KEY))  # 加密
+    credit_card = Column(EncryptedType(String, settings.ENCRYPTION_KEY))  # 加密
+```
+
+### 数据脱敏
+
+```python
+# 数据脱敏
+def mask_email(email):
+    name, domain = email.split('@')
+    masked_name = name[0] + '*' * (len(name) - 2) + name[-1]
+    return f"{masked_name}@{domain}"
+
+def mask_phone(phone):
+    return phone[:3] + '****' + phone[-4:]
+
+# 使用
+user_data = {
+    "email": mask_email(user.email),
+    "phone": mask_phone(user.phone)
+}
+```
+
+### 备份恢复
+
+```python
+# 数据库备份
+import subprocess
+from datetime import datetime
+
+class DatabaseBackup:
+    def __init__(self, db_url, backup_dir):
+        self.db_url = db_url
+        self.backup_dir = backup_dir
+    
+    def backup(self):
+        timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+        backup_file = f"{self.backup_dir}/backup_{timestamp}.sql"
+        
+        subprocess.run([
+            'pg_dump',
+            self.db_url,
+            '-f', backup_file
+        ], check=True)
+        
+        return backup_file
+    
+    def restore(self, backup_file):
+        subprocess.run([
+            'psql',
+            self.db_url,
+            '-f', backup_file
+        ], check=True)
+```
+
+---
+
+## 📋 数据库检查清单
+
+### 设计原则
+
+- [ ] 范式化设计
+- [ ] 主键设计合理
+- [ ] 外键约束完整
+- [ ] 数据类型正确
+- [ ] 默认值设置
+
+### 索引设计
+
+- [ ] 高频查询字段索引
+- [ ] 复合索引优化
+- [ ] 唯一索引约束
+- [ ] 索引命名规范
+- [ ] 定期索引维护
+
+### 性能优化
+
+- [ ] 查询优化
+- [ ] 连接池配置
+- [ ] 缓存策略
+- [ ] 慢查询监控
+- [ ] 执行计划分析
+
+### 数据安全
+
+- [ ] 敏感数据加密
+- [ ] 数据脱敏
+- [ ] 备份策略
+- [ ] 恢复演练
+- [ ] 访问控制
+
+### 监控告警
+
+- [ ] 连接数监控
+- [ ] 查询性能监控
+- [ ] 存储空间监控
+- [ ] 慢查询告警
+- [ ] 死锁监控
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[Google Cloud Database Best Practices](https://cloud.google.com/architecture/best-practices-for-operational-databases)** - Google 数据库最佳实践
+- **[Microsoft SQL Best Practices](https://docs.microsoft.com/en-us/sql/)** - Microsoft SQL 最佳实践
+- **[AWS Database Best Practices](https://aws.amazon.com/architecture/database/)** - AWS 数据库最佳实践
+- **[Martin Fowler - Database Patterns](https://martinfowler.com/)** - 数据库模式
+
+### 学习资源
+
+- **[Designing Data-Intensive Applications](https://dataintensive.net/)** - 数据密集型应用设计
+- **[SQL Performance Explained](https://sqlperformanceexplained.com/)** - SQL 性能详解
+- **[Use The Index, Luke](https://use-the-index-luke.com/)** - 索引使用指南
+
+### 工具
+
+- **[pgAdmin](https://www.pgadmin.org/)** - PostgreSQL 管理工具
+- **[MySQL Workbench](https://www.mysql.com/products/workbench/)** - MySQL 管理工具
+- **[DBeaver](https://dbeaver.io/)** - 通用数据库工具
+- **[Explain Analyze](https://explain.depesz.com/)** - 执行计划分析
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，基于 Google/Microsoft/AWS 最佳实践 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🟢 低（核心技能）

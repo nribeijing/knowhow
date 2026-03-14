@@ -1,0 +1,549 @@
+# Skill: 代码最佳实践
+
+> 基于 Clean Code、Google、Microsoft 最佳实践的代码编写技能
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🟢 低（核心技能）
+
+---
+
+## 📋 前置技能
+
+- ✅ [architecture-principles.skill](../architecture-principles.skill) - 架构设计原则
+- ✅ [code-review-python.skill](../code-review/code-review-python.skill) - Python 代码审查
+- ✅ [code-review-vue.skill](../code-review/code-review-vue.skill) - Vue 代码审查
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[Clean Code](https://www.oreilly.com/library/view/clean-code-a/9780136083238/)** - 代码整洁之道
+- **[The Pragmatic Programmer](https://pragprog.com/titles/tpp20/the-pragmatic-programmer-20th-anniversary-edition/)** - 程序员修炼之道
+- **[Google Style Guides](https://google.github.io/styleguide/)** - Google 代码风格指南
+- **[Microsoft Coding Conventions](https://docs.microsoft.com/en-us/visualstudio/ide/coding-conventions)** - Microsoft 编码约定
+
+### 行业最佳实践
+
+- **SOLID Principles** - SOLID 原则
+- **DRY (Don't Repeat Yourself)** - 不要重复自己
+- **KISS (Keep It Simple, Stupid)** - 保持简单
+- **YAGNI (You Aren't Gonna Need It)** - 你不会需要它
+
+---
+
+## 📝 命名规范
+
+### 变量命名
+
+```python
+# ✅ 好的命名
+user_name = "John"
+total_price = 100.00
+is_active = True
+max_retry_count = 3
+
+# ❌ 坏的命名
+name = "John"  # 缺少上下文
+tp = 100.00  # 难以理解
+flag = True  # 含义不明
+n = 3  # 无意义
+```
+
+### 函数命名
+
+```python
+# ✅ 好的命名
+def calculate_total_price(items):
+    ...
+
+def validate_user_email(email):
+    ...
+
+def get_user_by_id(user_id):
+    ...
+
+# ❌ 坏的命名
+def calc(items):
+    ...
+
+def check(email):
+    ...
+
+def get(id):
+    ...
+```
+
+### 类命名
+
+```python
+# ✅ 好的命名
+class UserService:
+    ...
+
+class PaymentProcessor:
+    ...
+
+class DatabaseConnection:
+    ...
+
+# ❌ 坏的命名
+class Service:
+    ...
+
+class Processor:
+    ...
+
+class Manager:
+    ...
+```
+
+---
+
+## 📐 函数设计
+
+### 函数长度
+
+```python
+# ❌ 函数过长（>50 行）
+def process_user_data(data):
+    # 100 行代码...
+    pass
+
+# ✅ 函数适中（<20 行）
+def process_user_data(data):
+    validate_data(data)
+    normalized = normalize_data(data)
+    user = create_user(normalized)
+    send_notification(user)
+    return user
+```
+
+### 参数数量
+
+```python
+# ❌ 参数过多（>5 个）
+def create_user(email, name, age, phone, address, city, country, role):
+    ...
+
+# ✅ 使用数据类
+from dataclasses import dataclass
+
+@dataclass
+class UserData:
+    email: str
+    name: str
+    age: int
+    phone: str
+    address: str
+    city: str
+    country: str
+    role: str
+
+def create_user(user_data: UserData):
+    ...
+```
+
+### 单一职责
+
+```python
+# ❌ 多个职责
+def process_order(order):
+    # 验证订单
+    # 计算总价
+    # 扣减库存
+    # 创建订单记录
+    # 发送邮件通知
+    pass
+
+# ✅ 单一职责
+def process_order(order):
+    validate_order(order)
+    total = calculate_total(order)
+    reduce_inventory(order)
+    created_order = create_order_record(order, total)
+    send_confirmation_email(created_order)
+    return created_order
+```
+
+---
+
+## 💬 注释规范
+
+### 好的注释
+
+```python
+# ✅ 解释为什么
+# 使用指数退避算法，避免频繁重试导致服务压力
+delay = min(base_delay * (2 ** retry_count), max_delay)
+
+# ✅ 解释复杂逻辑
+# 计算两个日期的工作日天数（排除周末和节假日）
+def calculate_business_days(start_date, end_date):
+    ...
+
+# ✅ 警告信息
+# ⚠️ 注意：此函数有副作用，会修改全局状态
+def update_global_cache(data):
+    ...
+```
+
+### 坏的注释
+
+```python
+# ❌ 重复代码
+# 设置 user_name 为 "John"
+user_name = "John"
+
+# ❌ 无意义注释
+# 遍历列表
+for item in items:
+    ...
+
+# ❌ 过时注释
+# 使用缓存提高性能（缓存已移除）
+result = fetch_from_database()
+```
+
+### 文档字符串
+
+```python
+def create_user(
+    email: str,
+    password: str,
+    name: str
+) -> User:
+    """
+    创建新用户
+    
+    Args:
+        email: 用户邮箱，必须唯一
+        password: 用户密码，至少 8 位
+        name: 用户姓名
+    
+    Returns:
+        User: 创建的用户对象
+    
+    Raises:
+        ValueError: 当邮箱已存在或密码格式不正确时
+        DatabaseError: 当数据库操作失败时
+    
+    Example:
+        >>> user = create_user("test@example.com", "password123", "John")
+        >>> user.email
+        'test@example.com'
+    """
+    ...
+```
+
+---
+
+## 🔄 代码组织
+
+### 导入顺序
+
+```python
+# ✅ 好的导入顺序
+# 1. 标准库
+import os
+import sys
+from datetime import datetime
+
+# 2. 第三方库
+import requests
+from fastapi import FastAPI
+
+# 3. 本地导入
+from app.core.config import settings
+from app.services.user_service import UserService
+
+# 空行分隔
+```
+
+### 文件组织
+
+```python
+# ✅ 好的文件组织
+"""
+模块文档字符串
+"""
+
+# 导入
+import ...
+
+# 常量
+MAX_RETRY_COUNT = 3
+DEFAULT_TIMEOUT = 30
+
+# 类定义
+class UserService:
+    ...
+
+# 函数定义
+def create_user(...):
+    ...
+
+# 主入口
+if __name__ == "__main__":
+    ...
+```
+
+---
+
+## 🧪 错误处理
+
+### 异常捕获
+
+```python
+# ❌ 捕获所有异常
+try:
+    process_data()
+except:
+    pass
+
+# ✅ 捕获具体异常
+try:
+    process_data()
+except ValueError as e:
+    logger.error(f"数据验证失败：{e}")
+    raise
+except DatabaseError as e:
+    logger.error(f"数据库错误：{e}", exc_info=True)
+    raise
+```
+
+### 错误消息
+
+```python
+# ❌ 模糊错误
+raise Exception("出错了")
+
+# ✅ 具体错误
+raise ValueError(f"邮箱格式不正确：{email}")
+raise DatabaseError(f"用户 {user_id} 不存在")
+```
+
+### 资源清理
+
+```python
+# ❌ 忘记清理资源
+file = open("data.txt")
+data = file.read()
+# 忘记关闭文件
+
+# ✅ 使用上下文管理器
+with open("data.txt") as file:
+    data = file.read()
+
+# ✅ 手动清理
+file = None
+try:
+    file = open("data.txt")
+    data = file.read()
+finally:
+    if file:
+        file.close()
+```
+
+---
+
+## 📦 代码复用
+
+### DRY 原则
+
+```python
+# ❌ 重复代码
+def create_user(email, name):
+    if not email:
+        raise ValueError("邮箱不能为空")
+    if not is_valid_email(email):
+        raise ValueError("邮箱格式不正确")
+    ...
+
+def update_user(user_id, email, name):
+    if not email:
+        raise ValueError("邮箱不能为空")
+    if not is_valid_email(email):
+        raise ValueError("邮箱格式不正确")
+    ...
+
+# ✅ 提取公共逻辑
+def validate_email(email):
+    if not email:
+        raise ValueError("邮箱不能为空")
+    if not is_valid_email(email):
+        raise ValueError("邮箱格式不正确")
+
+def create_user(email, name):
+    validate_email(email)
+    ...
+
+def update_user(user_id, email, name):
+    validate_email(email)
+    ...
+```
+
+### 组合优于继承
+
+```python
+# ❌ 过度继承
+class Animal:
+    ...
+
+class Mammal(Animal):
+    ...
+
+class Dog(Mammal):
+    ...
+
+class Cat(Mammal):
+    ...
+
+# ✅ 使用组合
+class Animal:
+    def __init__(self, sound_behavior, move_behavior):
+        self.sound_behavior = sound_behavior
+        self.move_behavior = move_behavior
+    
+    def make_sound(self):
+        return self.sound_behavior.make_sound()
+    
+    def move(self):
+        return self.move_behavior.move()
+
+class BarkSound:
+    def make_sound(self):
+        return "Woof!"
+
+class WalkMove:
+    def move(self):
+        return "Walking"
+
+dog = Animal(BarkSound(), WalkMove())
+```
+
+---
+
+## 🎯 测试友好代码
+
+### 可测试性
+
+```python
+# ❌ 难以测试
+def get_user_data(user_id):
+    db = Database()  # 硬编码依赖
+    return db.query("SELECT * FROM users WHERE id = ?", user_id)
+
+# ✅ 易于测试
+def get_user_data(user_id, db=None):
+    if db is None:
+        db = Database()
+    return db.query("SELECT * FROM users WHERE id = ?", user_id)
+
+# ✅ 依赖注入
+class UserService:
+    def __init__(self, db: Database):
+        self.db = db
+    
+    def get_user_data(self, user_id):
+        return self.db.query("SELECT * FROM users WHERE id = ?", user_id)
+```
+
+### 纯函数
+
+```python
+# ❌ 有副作用
+total = 0
+
+def add_to_total(amount):
+    global total
+    total += amount
+    return total
+
+# ✅ 纯函数
+def calculate_total(items):
+    return sum(item.price for item in items)
+```
+
+---
+
+## 📋 代码检查清单
+
+### 命名
+
+- [ ] 变量名清晰有意义
+- [ ] 函数名动词开头
+- [ ] 类名名词大写
+- [ ] 避免缩写
+- [ ] 命名一致性
+
+### 函数
+
+- [ ] 函数长度 < 20 行
+- [ ] 参数数量 < 5 个
+- [ ] 单一职责
+- [ ] 无副作用
+- [ ] 文档字符串完整
+
+### 错误处理
+
+- [ ] 捕获具体异常
+- [ ] 错误消息清晰
+- [ ] 资源正确清理
+- [ ] 日志记录完整
+- [ ] 异常堆栈记录
+
+### 代码复用
+
+- [ ] 无重复代码
+- [ ] 提取公共逻辑
+- [ ] 使用组合而非继承
+- [ ] 使用工具函数
+- [ ] 使用标准库
+
+### 测试友好
+
+- [ ] 依赖注入
+- [ ] 纯函数
+- [ ] 无全局状态
+- [ ] 易于 Mock
+- [ ] 单元测试覆盖
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[Clean Code](https://www.oreilly.com/library/view/clean-code-a/9780136083238/)** - 代码整洁之道
+- **[The Pragmatic Programmer](https://pragprog.com/titles/tpp20/the-pragmatic-programmer-20th-anniversary-edition/)** - 程序员修炼之道
+- **[Google Style Guides](https://google.github.io/styleguide/)** - Google 代码风格指南
+- **[Microsoft Coding Conventions](https://docs.microsoft.com/en-us/visualstudio/ide/coding-conventions)** - Microsoft 编码约定
+
+### 学习资源
+
+- **[Refactoring Guru](https://refactoring.guru/)** - 重构指南
+- **[Real Python](https://realpython.com/)** - Python 最佳实践
+- **[Vue.js Best Practices](https://vuejs.org/guide/best-practices/)** - Vue 最佳实践
+
+### 工具
+
+- **[pylint](https://pylint.pycqa.org/)** - Python 代码检查
+- **[ESLint](https://eslint.org/)** - JavaScript 代码检查
+- **[pre-commit](https://pre-commit.com/)** - Git 预提交检查
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，基于 Clean Code/Google/Microsoft 最佳实践 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🟢 低（核心技能）

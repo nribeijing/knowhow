@@ -1,0 +1,531 @@
+# Skill: 消息队列
+
+> 基于 RabbitMQ、Kafka、AWS SQS 最佳实践的消息队列技能
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🟢 低（进阶技能）
+
+---
+
+## 📋 前置技能
+
+- ✅ [system-architecture.skill](../architecture/system-architecture.skill) - 系统架构设计
+- ✅ [devops-best-practices.skill](../devops/devops-best-practices.skill) - DevOps 最佳实践
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[RabbitMQ Best Practices](https://www.rabbitmq.com/documentation.html)** - RabbitMQ 最佳实践
+- **[Kafka Best Practices](https://kafka.apache.org/documentation/)** - Kafka 最佳实践
+- **[AWS SQS Best Practices](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/)** - AWS SQS 最佳实践
+
+### 行业最佳实践
+
+- **Message Queue Patterns** - 消息队列模式
+- **Event-Driven Architecture** - 事件驱动架构
+- **Message Reliability** - 消息可靠性
+- **Message Ordering** - 消息顺序
+
+---
+
+## 🏛️ 消息队列模式
+
+### 点对点（Point-to-Point）
+
+```python
+"""
+一个消息只被一个消费者消费
+
+适用场景:
+- 任务队列
+- 工作分发
+- 负载均衡
+"""
+
+# RabbitMQ 实现
+import pika
+
+# 生产者
+connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+channel = connection.channel()
+
+channel.queue_declare(queue='task_queue', durable=True)
+
+channel.basic_publish(
+    exchange='',
+    routing_key='task_queue',
+    body='Task data',
+    properties=pika.BasicProperties(
+        delivery_mode=2,  # 持久化
+    )
+)
+
+# 消费者
+def callback(ch, method, properties, body):
+    print(f"Received: {body}")
+    # 处理任务
+    ch.basic_ack(delivery_tag=method.delivery_tag)
+
+channel.basic_consume(queue='task_queue', on_message_callback=callback)
+channel.start_consuming()
+```
+
+### 发布/订阅（Pub/Sub）
+
+```python
+"""
+一个消息被多个消费者消费
+
+适用场景:
+- 事件通知
+- 数据广播
+- 日志收集
+"""
+
+# RabbitMQ Fanout Exchange
+channel.exchange_declare(exchange='logs', exchange_type='fanout')
+
+# 生产者
+channel.basic_publish(
+    exchange='logs',
+    routing_key='',
+    body='Log message'
+)
+
+# 消费者（多个）
+result = channel.queue_declare('', exclusive=True)
+queue_name = result.method.queue
+
+channel.queue_bind(exchange='logs', queue=queue_name)
+```
+
+### 路由（Routing）
+
+```python
+"""
+根据路由键分发到不同队列
+
+适用场景:
+- 日志级别路由
+- 多租户隔离
+- 条件分发
+"""
+
+# RabbitMQ Direct Exchange
+channel.exchange_declare(exchange='direct_logs', exchange_type='direct')
+
+# 生产者
+severity = 'error'
+channel.basic_publish(
+    exchange='direct_logs',
+    routing_key=severity,
+    body='Error message'
+)
+
+# 消费者（订阅特定路由）
+severity = 'error'
+channel.queue_bind(
+    exchange='direct_logs',
+    queue=queue_name,
+    routing_key=severity
+)
+```
+
+### 主题（Topic）
+
+```python
+"""
+根据模式匹配路由
+
+适用场景:
+- 多级分类
+- 灵活订阅
+- 复杂路由
+"""
+
+# RabbitMQ Topic Exchange
+channel.exchange_declare(exchange='topic_logs', exchange_type='topic')
+
+# 生产者
+routing_key = 'kernel.critical'
+channel.basic_publish(
+    exchange='topic_logs',
+    routing_key=routing_key,
+    body='Critical kernel issue'
+)
+
+# 消费者（模式匹配）
+# 订阅所有 critical 级别
+binding_key = '*.critical'
+channel.queue_bind(
+    exchange='topic_logs',
+    queue=queue_name,
+    routing_key=binding_key
+)
+
+# 订阅 kernel 相关
+binding_key = 'kernel.*'
+```
+
+---
+
+## 🔒 消息可靠性保证
+
+### 消息持久化
+
+```python
+"""
+确保消息不丢失
+"""
+
+# 1. 队列持久化
+channel.queue_declare(queue='task_queue', durable=True)
+
+# 2. 消息持久化
+channel.basic_publish(
+    exchange='',
+    routing_key='task_queue',
+    body='Message',
+    properties=pika.BasicProperties(
+        delivery_mode=2,  # 持久化
+    )
+)
+
+# 3. 交换机持久化
+channel.exchange_declare(
+    exchange='my_exchange',
+    exchange_type='direct',
+    durable=True
+)
+```
+
+### 确认机制
+
+```python
+"""
+确保消息被正确处理
+"""
+
+# 手动确认
+channel.basic_consume(
+    queue='task_queue',
+    on_message_callback=callback,
+    auto_ack=False  # 手动确认
+)
+
+def callback(ch, method, properties, body):
+    try:
+        # 处理消息
+        process_message(body)
+        # 确认消息
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+    except Exception as e:
+        # 拒绝消息，重新入队
+        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+        # 或者拒绝并不重新入队
+        # ch.basic_reject(delivery_tag=method.delivery_tag, requeue=False)
+```
+
+### 事务机制
+
+```python
+"""
+确保消息原子性
+"""
+
+# 开启事务
+channel.tx_select()
+
+try:
+    channel.basic_publish(exchange='', routing_key='queue', body='Message 1')
+    channel.basic_publish(exchange='', routing_key='queue', body='Message 2')
+    # 提交事务
+    channel.tx_commit()
+except Exception:
+    # 回滚事务
+    channel.tx_rollback()
+```
+
+---
+
+## 📊 Kafka 最佳实践
+
+### Topic 设计
+
+```python
+"""
+Kafka Topic 设计原则
+"""
+
+# Topic 命名规范
+# 格式：业务。子业务。事件类型
+"user.order.created"
+"user.payment.completed"
+"inventory.stock.updated"
+
+# Partition 数量设计
+# 基于吞吐量：吞吐量 / 单 Partition 吞吐量
+# 基于消费者：消费者数量
+# 基于顺序：需要顺序的放同一 Partition
+
+# 复制因子
+# 生产环境：至少 3
+# 关键业务：至少 5
+```
+
+### 生产者配置
+
+```python
+"""
+Kafka 生产者优化配置
+"""
+
+from kafka import KafkaProducer
+
+producer = KafkaProducer(
+    bootstrap_servers=['localhost:9092'],
+    
+    # 可靠性配置
+    acks='all',  # 所有副本确认
+    retries=3,
+    retry_backoff_ms=100,
+    
+    # 性能配置
+    batch_size=16384,  # 16KB
+    linger_ms=5,  # 等待 5ms 批量发送
+    compression_type='gzip',  # 压缩
+    
+    # 幂等性
+    enable_idempotence=True,
+)
+
+# 发送消息
+future = producer.send('topic', key=b'key', value=b'value')
+
+# 异步回调
+future.add_callback(lambda metadata: print(f"Sent: {metadata.offset}"))
+future.add_errback(lambda exception: print(f"Error: {exception}"))
+
+# 等待发送完成
+producer.flush()
+```
+
+### 消费者配置
+
+```python
+"""
+Kafka 消费者优化配置
+"""
+
+from kafka import KafkaConsumer
+
+consumer = KafkaConsumer(
+    'topic',
+    bootstrap_servers=['localhost:9092'],
+    
+    # 消费者组
+    group_id='my-consumer-group',
+    
+    # 偏移量管理
+    auto_offset_reset='earliest',  # 从最早开始
+    enable_auto_commit=False,  # 手动提交
+    
+    # 性能配置
+    max_poll_records=500,  # 每次拉取数量
+    fetch_max_wait_ms=500,  # 等待时间
+    session_timeout_ms=30000,  # 会话超时
+    
+    # 反序列化
+    value_deserializer=lambda m: json.loads(m.decode('utf-8')),
+)
+
+# 消费消息
+for message in consumer:
+    try:
+        # 处理消息
+        process(message.value)
+        # 手动提交偏移量
+        consumer.commit()
+    except Exception as e:
+        # 处理失败
+        log_error(e)
+        # 可以选择重新消费
+```
+
+---
+
+## 🔥 消息队列问题与解决方案
+
+### 消息重复
+
+```markdown
+### 问题
+- 网络问题导致重复投递
+- 消费者处理成功但确认失败
+- 生产者重试导致重复
+
+### 解决方案
+1. 幂等性设计
+2. 去重表
+3. 唯一键约束
+```
+
+```python
+# 解决方案 1: 幂等性设计
+def process_message(message_id, data):
+    # 检查是否已处理
+    if redis.exists(f"processed:{message_id}"):
+        return
+    
+    # 处理消息
+    process(data)
+    
+    # 标记已处理
+    redis.setex(f"processed:{message_id}", 86400, "1")
+
+# 解决方案 2: 数据库唯一键
+def process_order(order_id, data):
+    try:
+        db.execute(
+            "INSERT INTO orders (order_id, data) VALUES (%s, %s)",
+            (order_id, data)
+        )
+    except DuplicateKeyError:
+        # 已处理，忽略
+        pass
+```
+
+### 消息丢失
+
+```markdown
+### 问题
+- 生产者发送失败
+- 队列宕机
+- 消费者处理失败
+
+### 解决方案
+1. 消息持久化
+2. 确认机制
+3. 死信队列
+```
+
+```python
+# 死信队列配置
+channel.queue_declare(
+    queue='main_queue',
+    arguments={
+        'x-dead-letter-exchange': 'dlx_exchange',
+        'x-dead-letter-routing-key': 'dlx_routing_key',
+        'x-message-ttl': 60000,  # 1 分钟超时
+    }
+)
+
+# 死信队列消费者
+channel.queue_declare(queue='dlx_queue')
+channel.queue_bind(exchange='dlx_exchange', queue='dlx_queue')
+```
+
+### 消息顺序
+
+```markdown
+### 问题
+- 需要保证消息顺序
+- 分布式环境下难以保证
+
+### 解决方案
+1. 单 Partition
+2. 业务顺序键
+3. 全局顺序队列
+```
+
+```python
+# Kafka 保证顺序
+# 1. 单 Partition
+producer.send('topic', partition=0, value=data)
+
+# 2. 业务顺序键（相同 key 的消息到同一 Partition）
+producer.send('topic', key=user_id.encode(), value=data)
+
+# 3. 消费者单线程处理
+for message in consumer:
+    # 单线程顺序处理
+    process(message)
+```
+
+---
+
+## 📋 消息队列检查清单
+
+### 架构设计
+
+- [ ] 队列模式选择合适
+- [ ] Topic/队列设计合理
+- [ ] 路由策略明确
+- [ ] 消费者组设计
+
+### 可靠性
+
+- [ ] 消息持久化
+- [ ] 确认机制
+- [ ] 重试机制
+- [ ] 死信队列
+
+### 性能
+
+- [ ] Partition 数量合理
+- [ ] 批量配置优化
+- [ ] 压缩配置
+- [ ] 消费者并发
+
+### 监控
+
+- [ ] 队列长度监控
+- [ ] 消费延迟监控
+- [ ] 错误率监控
+- [ ] 吞吐量监控
+
+### 安全
+
+- [ ] 认证配置
+- [ ] 授权配置
+- [ ] 网络隔离
+- [ ] 数据加密
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[RabbitMQ Best Practices](https://www.rabbitmq.com/documentation.html)** - RabbitMQ 最佳实践
+- **[Kafka Best Practices](https://kafka.apache.org/documentation/)** - Kafka 最佳实践
+- **[AWS SQS Best Practices](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/)** - AWS SQS 最佳实践
+
+### 学习资源
+
+- **[Enterprise Integration Patterns](https://www.enterpriseintegrationpatterns.com/)** - 企业集成模式
+- **[Designing Event-Driven Systems](https://www.oreilly.com/library/view/designing-event-driven-systems/9781492043126/)** - 事件驱动系统设计
+
+### 工具
+
+- **[RabbitMQ Management](https://www.rabbitmq.com/management.html)** - RabbitMQ 管理界面
+- **[Kafka Manager](https://github.com/yahoo/kafka-manager)** - Kafka 管理工具
+- **[Offset Explorer](https://www.kafkatool.com/)** - Kafka 可视化工具
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，基于 RabbitMQ/Kafka/AWS 最佳实践 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🟢 低（进阶技能）

@@ -1,0 +1,481 @@
+# Skill: 缓存设计
+
+> 基于 Google、Microsoft、Redis 最佳实践的缓存设计技能
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🟢 低（进阶技能）
+
+---
+
+## 📋 前置技能
+
+- ✅ [performance-optimization.skill](../optimization/performance-optimization.skill) - 性能优化
+- ✅ [backend-architecture.skill](../architecture/backend-architecture.skill) - 后端架构设计
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[Google Cloud Memorystore Best Practices](https://cloud.google.com/memorystore/docs/)** - Google 缓存最佳实践
+- **[Microsoft Azure Cache Best Practices](https://docs.microsoft.com/en-us/azure/azure-cache-for-redis/)** - Microsoft 缓存最佳实践
+- **[AWS ElastiCache Best Practices](https://docs.aws.amazon.com/AmazonElastiCache/)** - AWS 缓存最佳实践
+- **[Redis Best Practices](https://redis.io/docs/manual/)** - Redis 最佳实践
+
+### 行业最佳实践
+
+- **Caching Patterns** - 缓存模式
+- **Cache Invalidation** - 缓存失效
+- **Cache Consistency** - 缓存一致性
+- **Distributed Caching** - 分布式缓存
+
+---
+
+## 🏛️ 缓存模式
+
+### Cache-Aside（旁路缓存）
+
+```python
+"""
+最常用的缓存模式
+
+流程:
+1. 应用先查缓存
+2. 缓存未命中，查数据库
+3. 写入缓存
+4. 返回结果
+"""
+
+def get_user(user_id):
+    # 1. 查缓存
+    user = cache.get(f"user:{user_id}")
+    if user:
+        return user
+    
+    # 2. 查数据库
+    user = db.query(User).get(user_id)
+    if not user:
+        return None
+    
+    # 3. 写缓存
+    cache.setex(f"user:{user_id}", 300, user)
+    
+    # 4. 返回结果
+    return user
+```
+
+### Read-Through（读穿透）
+
+```python
+"""
+缓存负责加载数据
+
+流程:
+1. 应用查缓存
+2. 缓存未命中，缓存层查数据库
+3. 缓存层写入缓存
+4. 返回结果
+"""
+
+class CacheWithReadThrough:
+    def __init__(self, cache, db):
+        self.cache = cache
+        self.db = db
+    
+    def get(self, key):
+        # 缓存自动加载数据
+        return self.cache.get(key, loader=lambda k: self.db.query(k))
+```
+
+### Write-Through（写穿透）
+
+```python
+"""
+写入缓存时同步写入数据库
+
+流程:
+1. 应用写入缓存
+2. 缓存层同步写入数据库
+3. 返回成功
+"""
+
+class CacheWithWriteThrough:
+    def __init__(self, cache, db):
+        self.cache = cache
+        self.db = db
+    
+    def set(self, key, value):
+        # 同步写入缓存和数据库
+        self.cache.set(key, value)
+        self.db.save(key, value)
+```
+
+### Write-Back（写回）
+
+```python
+"""
+异步写入数据库
+
+流程:
+1. 应用写入缓存
+2. 缓存异步写入数据库
+3. 立即返回成功
+"""
+
+class CacheWithWriteBack:
+    def __init__(self, cache, db, queue):
+        self.cache = cache
+        self.db = db
+        self.queue = queue  # 消息队列
+    
+    def set(self, key, value):
+        # 写入缓存
+        self.cache.set(key, value)
+        # 异步写入数据库
+        self.queue.enqueue('save_to_db', key, value)
+```
+
+### Cache Invalidation（缓存失效）
+
+```python
+"""
+缓存失效策略
+
+1. 基于时间失效
+2. 基于事件失效
+3. 基于版本失效
+"""
+
+# 基于时间失效
+cache.setex("user:1", 300, user_data)  # 5 分钟后失效
+
+# 基于事件失效
+def update_user(user_id, data):
+    db.update(user_id, data)
+    cache.delete(f"user:{user_id}")  # 更新时失效
+
+# 基于版本失效
+version = cache.get("user:version")
+cache.set(f"user:1:v{version}", user_data)
+```
+
+---
+
+## 🔥 缓存问题与解决方案
+
+### 缓存穿透
+
+```markdown
+### 问题
+- 查询不存在的数据
+- 缓存未命中
+- 请求直达数据库
+- 数据库压力大
+
+### 解决方案
+1. 布隆过滤器
+2. 缓存空值
+3. 接口限流
+```
+
+```python
+# 解决方案 1: 布隆过滤器
+from redisbloom.client import Client
+
+bf = Client()
+
+def get_user(user_id):
+    # 布隆过滤器检查
+    if not bf.exists("users", user_id):
+        return None
+    
+    # 正常查询
+    user = cache.get(f"user:{user_id}")
+    if not user:
+        user = db.query(User).get(user_id)
+        if user:
+            cache.setex(f"user:{user_id}", 300, user)
+        else:
+            # 缓存空值
+            cache.setex(f"user:{user_id}", 60, None)
+        return user
+    
+    return user
+
+# 解决方案 2: 缓存空值
+def get_user(user_id):
+    user = cache.get(f"user:{user_id}")
+    if user is None:
+        user = db.query(User).get(user_id)
+        cache.setex(f"user:{user_id}", 60, user or {})  # 缓存空对象
+        return user
+    return user if user else None
+```
+
+### 缓存击穿
+
+```markdown
+### 问题
+- 热点 key 过期
+- 大量请求直达数据库
+- 数据库瞬间压力大
+
+### 解决方案
+1. 互斥锁
+2. 逻辑过期
+3. 永不过期
+```
+
+```python
+# 解决方案 1: 互斥锁
+import threading
+
+lock = threading.Lock()
+
+def get_user(user_id):
+    user = cache.get(f"user:{user_id}")
+    if user:
+        return user
+    
+    # 获取互斥锁
+    if lock.acquire(timeout=1):
+        try:
+            # 双重检查
+            user = cache.get(f"user:{user_id}")
+            if user:
+                return user
+            
+            user = db.query(User).get(user_id)
+            cache.setex(f"user:{user_id}", 300, user)
+            return user
+        finally:
+            lock.release()
+    else:
+        # 等待后重试
+        time.sleep(0.1)
+        return get_user(user_id)
+
+# 解决方案 2: 逻辑过期
+def get_user(user_id):
+    user_data = cache.get(f"user:{user_id}")
+    if not user_data:
+        return db.query(User).get(user_id)
+    
+    # 检查逻辑过期时间
+    if time.time() > user_data['expire_at']:
+        # 异步更新缓存
+        threading.Thread(target=update_cache, args=(user_id,)).start()
+    
+    return user_data['data']
+```
+
+### 缓存雪崩
+
+```markdown
+### 问题
+- 大量 key 同时过期
+- 请求直达数据库
+- 数据库崩溃
+
+### 解决方案
+1. 随机过期时间
+2. 热点数据永不过期
+3. 多级缓存
+```
+
+```python
+# 解决方案 1: 随机过期时间
+import random
+
+def cache_user(user_id, user_data):
+    # 基础过期时间 5 分钟 + 随机 0-5 分钟
+    expire_time = 300 + random.randint(0, 300)
+    cache.setex(f"user:{user_id}", expire_time, user_data)
+
+# 解决方案 2: 多级缓存
+# L1: 本地缓存（Guava/Caffeine）
+# L2: 分布式缓存（Redis）
+# L3: 数据库
+
+from cachetools import TTLCache
+
+local_cache = TTLCache(maxsize=1000, ttl=60)
+
+def get_user(user_id):
+    # L1: 本地缓存
+    user = local_cache.get(user_id)
+    if user:
+        return user
+    
+    # L2: 分布式缓存
+    user = redis.get(f"user:{user_id}")
+    if user:
+        local_cache[user_id] = user
+        return user
+    
+    # L3: 数据库
+    user = db.query(User).get(user_id)
+    if user:
+        redis.setex(f"user:{user_id}", 300, user)
+        local_cache[user_id] = user
+    return user
+```
+
+---
+
+## 📊 Redis 最佳实践
+
+### 数据结构选择
+
+```python
+"""
+根据场景选择合适的数据结构
+"""
+
+# 字符串：缓存、计数器
+cache.set("user:1", user_json)
+cache.incr("page:1:view_count")
+
+# 哈希：对象存储
+cache.hset("user:1", mapping={
+    "name": "John",
+    "email": "john@example.com"
+})
+
+# 列表：消息队列、最新列表
+cache.lpush("news:latest", news_json)
+cache.ltrim("news:latest", 0, 99)  # 保留最新 100 条
+
+# 集合：标签、好友关系
+cache.sadd("user:1:tags", "python", "redis", "cache")
+cache.sinter("user:1:tags", "user:2:tags")  # 共同标签
+
+# 有序集合：排行榜
+cache.zadd("leaderboard", {"user:1": 1000, "user:2": 900})
+cache.zrevrange("leaderboard", 0, 9)  # 前 10 名
+```
+
+### 键命名规范
+
+```python
+"""
+统一的键命名规范
+"""
+
+# 格式：对象：ID:属性
+"user:1:profile"
+"order:123:items"
+"product:456:reviews"
+
+# 使用冒号分隔
+# 使用小写字母
+# 避免特殊字符
+# 保持简洁有意义
+```
+
+### 内存优化
+
+```python
+"""
+Redis 内存优化技巧
+"""
+
+# 1. 使用哈希而非字符串存储对象
+# ❌ 浪费内存
+cache.set("user:1:name", "John")
+cache.set("user:1:email", "john@example.com")
+
+# ✅ 节省内存
+cache.hset("user:1", mapping={
+    "name": "John",
+    "email": "john@example.com"
+})
+
+# 2. 使用压缩
+cache.set("large:data", zlib.compress(large_data))
+
+# 3. 设置合理的过期时间
+cache.setex("temp:data", 300, data)  # 5 分钟
+
+# 4. 使用整数 ID
+# ✅ 使用整数
+user_id = 123
+# ❌ 避免 UUID
+user_id = "550e8400-e29b-41d4-a716-446655440000"
+```
+
+---
+
+## 📋 缓存设计检查清单
+
+### 缓存策略
+
+- [ ] 缓存模式选择合适
+- [ ] 过期时间合理
+- [ ] 失效策略明确
+- [ ] 一致性保证
+
+### 数据结构
+
+- [ ] 数据结构选择合适
+- [ ] 键命名规范
+- [ ] 内存优化
+- [ ] 索引设计
+
+### 性能优化
+
+- [ ] 批量操作
+- [ ] 管道使用
+- [ ] 连接池配置
+- [ ] 监控配置
+
+### 可靠性
+
+- [ ] 持久化配置
+- [ ] 主从复制
+- [ ] 哨兵配置
+- [ ] 集群配置
+
+### 安全性
+
+- [ ] 密码认证
+- [ ] 网络隔离
+- [ ] 命令限制
+- [ ] 数据加密
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[Google Cloud Memorystore Best Practices](https://cloud.google.com/memorystore/docs/)** - Google 缓存最佳实践
+- **[Microsoft Azure Cache Best Practices](https://docs.microsoft.com/en-us/azure/azure-cache-for-redis/)** - Microsoft 缓存最佳实践
+- **[AWS ElastiCache Best Practices](https://docs.aws.amazon.com/AmazonElastiCache/)** - AWS 缓存最佳实践
+- **[Redis Best Practices](https://redis.io/docs/manual/)** - Redis 最佳实践
+
+### 学习资源
+
+- **[Redis Design Patterns](https://redis.io/docs/manual/design-patterns/)** - Redis 设计模式
+- **[Caching Best Practices](https://docs.microsoft.com/en-us/azure/architecture/best-practices/caching)** - 缓存最佳实践
+
+### 工具
+
+- **[RedisInsight](https://redis.com/redis-enterprise/redis-insight/)** - Redis 可视化工具
+- **[Redis Commander](https://joeferner.github.io/redis-commander/)** - Redis Web 界面
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，基于 Google/Microsoft/Redis 最佳实践 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🟢 低（进阶技能）

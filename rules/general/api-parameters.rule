@@ -1,0 +1,706 @@
+# Rule: API 参数设计规范
+
+> 基于 RESTful API 标准和行业最佳实践
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**标准来源**: RFC 3986, RFC 7231, Google API Design Guide, Microsoft REST API Guidelines
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[RFC 3986](https://tools.ietf.org/html/rfc3986)** - URI 通用语法标准
+- **[RFC 7231](https://tools.ietf.org/html/rfc7231)** - HTTP/1.1 语义标准
+- **[RFC 7807](https://tools.ietf.org/html/rfc7807)** - HTTP API 问题详情
+- **[RFC 3339](https://tools.ietf.org/html/rfc3339)** - 日期时间格式
+- **[RFC 4122](https://tools.ietf.org/html/rfc4122)** - UUID 格式
+- **[OpenAPI Specification](https://swagger.io/specification/)** - API 描述规范
+
+### 行业实践
+
+- **[Google API Design Guide](https://cloud.google.com/apis/design)** - Google API 设计规范
+- **[Microsoft REST API Guidelines](https://github.com/microsoft/api-guidelines)** - Microsoft REST API 规范
+- **[Zalando RESTful API Guidelines](https://opensource.zalando.com/restful-api-guidelines/)** - Zalando API 规范
+- **[JSON:API](https://jsonapi.org/)** - JSON API 构建规范
+
+---
+
+## 🎯 核心原则
+
+### 1. 一致性原则 (Consistency)
+
+> "API 参数命名应保持一致的风格，避免混用多种命名规范。"
+> — Google API Design Guide
+
+**实践**:
+- ✅ 统一使用 snake_case
+- ✅ Path、Query、Body、Response 保持一致
+- ✅ 避免混用 snake_case 和 camelCase
+
+### 2. 清晰性原则 (Clarity)
+
+> "参数名称应清晰表达其含义和用途。"
+> — Microsoft REST API Guidelines
+
+**实践**:
+- ✅ 使用有意义的名称
+- ✅ 避免缩写和简写
+- ✅ 布尔值使用 `is_`, `has_`, `can_` 前缀
+
+### 3. 标准化原则 (Standardization)
+
+> "遵循行业标准和最佳实践。"
+> — Zalando RESTful API Guidelines
+
+**实践**:
+- ✅ 使用标准日期格式（ISO 8601）
+- ✅ 使用 UUID 作为资源 ID
+- ✅ 使用标准分页参数
+
+---
+
+## 📏 入参设计规范
+
+### Path 参数（路径参数）
+
+#### 命名规范
+
+| 标准 | 格式 | 示例 | 来源 |
+|------|------|------|------|
+| **snake_case** | `{user_id}` | `/users/{user_id}` | ✅ Google, Microsoft |
+| **kebab-case** | `{user-id}` | `/users/{user-id}` | ❌ 不推荐 |
+| **camelCase** | `{userId}` | `/users/{userId}` | ❌ 不推荐 |
+
+**推荐**: **snake_case**（Google、Microsoft 标准）
+
+```python
+# ✅ 推荐
+@router.get("/users/{user_id}")
+@router.get("/museums/{museum_id}/halls/{hall_id}")
+
+# ❌ 避免
+@router.get("/users/{userId}")
+@router.get("/users/{user-id}")
+```
+
+#### 参数类型
+
+| 类型 | 格式 | 示例 | 说明 |
+|------|------|------|------|
+| **UUID** | UUID v4 | `{user_id}` | ✅ 资源 ID 推荐使用 UUID |
+| **整数** | 数字 | `{id}` | ⚠️ 简单场景可使用 |
+| **字符串** | slug | `{slug}` | ✅ URL 友好名称 |
+
+**标准**:
+```python
+from uuid import UUID
+
+# ✅ 推荐：使用 UUID
+@router.get("/users/{user_id}")
+async def get_user(user_id: UUID):
+    ...
+
+# ⚠️ 可接受：简单场景使用整数
+@router.get("/users/{id}")
+async def get_user(id: int):
+    ...
+```
+
+---
+
+### Query 参数（查询参数）
+
+#### 命名规范
+
+| 标准 | 格式 | 示例 | 来源 |
+|------|------|------|------|
+| **snake_case** | `page_size` | `?page_size=10` | ✅ Google, Microsoft |
+| **camelCase** | `pageSize` | `?pageSize=10` | ⚠️ 部分 API |
+
+**推荐**: **snake_case**（与 Path 参数保持一致）
+
+#### 标准查询参数
+
+| 参数 | 类型 | 说明 | 示例 | 标准 |
+|------|------|------|------|------|
+| **page** | integer | 页码（从 1 开始） | `?page=1` | ✅ Google |
+| **page_size** | integer | 每页数量 | `?page_size=10` | ✅ Google |
+| **limit** | integer | 每页数量（替代） | `?limit=10` | ✅ Zalando |
+| **offset** | integer | 偏移量 | `?offset=20` | ✅ Zalando |
+| **sort** | string | 排序字段 | `?sort=created_at` | ✅ Google |
+| **order** | string | 排序方向 | `?order=desc` | ✅ Google |
+| **filter** | string | 过滤条件 | `?filter=status:active` | ✅ Zalando |
+| **fields** | string | 字段选择 | `?fields=id,name` | ✅ Google |
+| **q** | string | 搜索关键词 | `?q=博物馆` | ✅ 通用 |
+
+#### 分页参数
+
+**Google 风格（推荐）**:
+```http
+GET /users?page=1&page_size=10
+GET /users?page=2&page_size=10
+```
+
+**Zalando 风格**:
+```http
+GET /users?offset=0&limit=10
+GET /users?offset=10&limit=10
+```
+
+**游标分页（大数据集）**:
+```http
+GET /users?cursor=abc123&limit=10
+```
+
+#### 排序参数
+
+**Google 风格（推荐）**:
+```http
+# 升序
+GET /users?sort=created_at
+
+# 降序（负号表示）
+GET /users?sort=-created_at
+
+# 多字段排序
+GET /users?sort=created_at,name
+```
+
+**Microsoft 风格**:
+```http
+GET /users?$orderby=created_at desc
+```
+
+#### 过滤参数
+
+**Zalando 风格（推荐）**:
+```http
+# 多条件过滤
+GET /users?filter=status:active,role:admin
+
+# 范围过滤
+GET /users?filter=created_at>2024-01-01
+
+# 比较操作
+GET /users?filter=age>=18
+```
+
+**简单风格**:
+```http
+GET /users?status=active&role=admin
+GET /users?created_at_gt=2024-01-01
+```
+
+**字段选择**:
+```http
+# 逗号分隔
+GET /users?fields=id,name,email
+
+# 数组格式
+GET /users?fields[]=id&fields[]=name
+```
+
+---
+
+### Request Body（请求体）
+
+#### 命名规范
+
+| 标准 | 格式 | 示例 | 来源 |
+|------|------|------|------|
+| **snake_case** | `user_name` | `{"user_name": "test"}` | ✅ Google, Microsoft |
+| **camelCase** | `userName` | `{"userName": "test"}` | ⚠️ 部分 API |
+
+**推荐**: **snake_case**（与 Python 后端保持一致）
+
+#### 创建资源（POST）
+
+```json
+// ✅ 推荐格式
+{
+  "email": "user@example.com",
+  "name": "张三",
+  "password": "secure_password",
+  "role_id": "uuid-123"
+}
+
+// ❌ 避免
+{
+  "userName": "test",  // ❌ camelCase 不一致
+  "Email": "test"      // ❌ 大写开头
+}
+```
+
+#### 更新资源
+
+**PUT - 全量更新**:
+```json
+{
+  "email": "new@example.com",
+  "name": "新名字",
+  "role_id": "uuid-456"
+}
+```
+
+**PATCH - 部分更新**:
+```json
+{
+  "name": "新名字"
+}
+```
+
+#### 批量操作
+
+**批量创建**:
+```json
+POST /users/batch
+{
+  "users": [
+    {"email": "user1@example.com", "name": "用户 1"},
+    {"email": "user2@example.com", "name": "用户 2"}
+  ]
+}
+```
+
+**批量删除**:
+```json
+DELETE /users
+{
+  "ids": ["uuid-1", "uuid-2", "uuid-3"]
+}
+```
+
+---
+
+## 📏 出参设计规范
+
+### Response 结构
+
+#### 成功响应
+
+**简洁风格（推荐）**:
+```json
+{
+  "id": "uuid-123",
+  "email": "user@example.com",
+  "name": "张三",
+  "created_at": "2026-03-14T10:30:00Z",
+  "updated_at": "2026-03-14T10:30:00Z"
+}
+```
+
+**带包装风格**:
+```json
+{
+  "data": {
+    "id": "uuid-123",
+    "email": "user@example.com",
+    "name": "张三"
+  },
+  "metadata": {
+    "timestamp": "2026-03-14T10:30:00Z",
+    "request_id": "req-123"
+  }
+}
+```
+
+#### 列表响应
+
+**Google 风格（推荐）**:
+```json
+{
+  "users": [
+    {"id": "uuid-1", "name": "用户 1"},
+    {"id": "uuid-2", "name": "用户 2"}
+  ],
+  "next_page_token": "abc123",
+  "total_size": 100
+}
+```
+
+**简单风格**:
+```json
+{
+  "items": [
+    {"id": "uuid-1", "name": "用户 1"},
+    {"id": "uuid-2", "name": "用户 2"}
+  ],
+  "pagination": {
+    "page": 1,
+    "page_size": 10,
+    "total": 100,
+    "total_pages": 10
+  }
+}
+```
+
+#### 错误响应
+
+**RFC 7807 标准（推荐）**:
+```json
+{
+  "type": "https://httpstatus.es/400",
+  "title": "Bad Request",
+  "status": 400,
+  "detail": "The email field is invalid",
+  "instance": "/api/v1/users",
+  "fields": [
+    {
+      "name": "email",
+      "reason": "invalid_format"
+    }
+  ]
+}
+```
+
+**Google 风格**:
+```json
+{
+  "error": {
+    "code": "invalid_parameter",
+    "message": "参数错误",
+    "details": [
+      {
+        "field": "email",
+        "message": "邮箱格式不正确",
+        "code": "invalid_format"
+      }
+    ]
+  },
+  "timestamp": "2026-03-14T10:30:00Z",
+  "path": "/api/v1/users"
+}
+```
+
+---
+
+### 字段命名规范
+
+#### 时间字段
+
+| 字段 | 格式 | 示例 | 标准 |
+|------|------|------|------|
+| **created_at** | ISO 8601 | `2026-03-14T10:30:00Z` | ✅ RFC 3339 |
+| **updated_at** | ISO 8601 | `2026-03-14T10:30:00Z` | ✅ RFC 3339 |
+| **deleted_at** | ISO 8601 | `2026-03-14T10:30:00Z` | ✅ RFC 3339 |
+
+**推荐**: **ISO 8601 / RFC 3339** 格式
+
+```json
+// ✅ 推荐
+{
+  "created_at": "2026-03-14T10:30:00Z",
+  "updated_at": "2026-03-14T10:30:00Z"
+}
+
+// ❌ 避免
+{
+  "created_at": "2026-03-14 10:30:00",  // ❌ 非标准格式
+  "created_at": 1710403800              // ❌ 时间戳（不推荐）
+}
+```
+
+#### 布尔字段
+
+| 前缀 | 用途 | 示例 | 说明 |
+|------|------|------|------|
+| **is_** | 状态 | `is_active` | ✅ 是否激活 |
+| **has_** | 拥有 | `has_permission` | ✅ 是否拥有权限 |
+| **can_** | 能力 | `can_edit` | ✅ 是否可以编辑 |
+
+**推荐**: 使用 `is_`, `has_`, `can_` 前缀，清晰表达含义
+
+```json
+{
+  "is_active": true,
+  "is_verified": false,
+  "has_permission": true,
+  "can_edit": true
+}
+```
+
+#### 空值处理
+
+| 情况 | 处理方式 | 示例 | 说明 |
+|------|---------|------|------|
+| **字段不存在** | 省略字段 | `{}` | ✅ 可选字段未设置 |
+| **字段为 null** | 返回 null | `{"name": null}` | ⚠️ 字段已设置但为空 |
+| **空字符串** | 返回 "" | `{"name": ""}` | ⚠️ 字段为空字符串 |
+| **空数组** | 返回 [] | `{"items": []}` | ✅ 列表为空 |
+
+**Google 标准**:
+```
+可选字段在未设置时应省略，而非返回 null
+```
+
+---
+
+### 分页响应
+
+#### 页码分页（推荐用于小数据集）
+
+```json
+{
+  "data": [...],
+  "pagination": {
+    "page": 1,
+    "page_size": 10,
+    "total": 100,
+    "total_pages": 10,
+    "has_next": true,
+    "has_prev": false
+  }
+}
+```
+
+#### 游标分页（推荐用于大数据集）
+
+```json
+{
+  "data": [...],
+  "pagination": {
+    "next_cursor": "abc123",
+    "prev_cursor": "xyz789",
+    "has_next": true,
+    "has_prev": false
+  }
+}
+```
+
+---
+
+## 📊 完整对比表
+
+### 参数命名规范
+
+| 参数类型 | 推荐格式 | 示例 | 标准来源 |
+|---------|---------|------|---------|
+| **Path** | snake_case | `{user_id}` | ✅ Google, Microsoft |
+| **Query** | snake_case | `page_size` | ✅ Google, Microsoft |
+| **Request Body** | snake_case | `user_name` | ✅ Google, Microsoft |
+| **Response** | snake_case | `user_name` | ✅ Google, Microsoft |
+
+### 数据类型规范
+
+| 类型 | 格式 | 示例 | 标准 |
+|------|------|------|------|
+| **ID** | UUID v4 | `550e8400-e29b-41d4-a716-446655440000` | ✅ RFC 4122 |
+| **日期时间** | ISO 8601 | `2026-03-14T10:30:00Z` | ✅ RFC 3339 |
+| **布尔值** | true/false | `true` | ✅ JSON |
+| **数字** | integer/number | `10`, `3.14` | ✅ JSON |
+| **字符串** | string | `"hello"` | ✅ JSON |
+
+---
+
+## 🎯 实施指南
+
+### Backend 实现（FastAPI）
+
+```python
+from fastapi import APIRouter, Query, Path
+from pydantic import BaseModel, EmailStr, Field
+from datetime import datetime
+from uuid import UUID
+from typing import Optional, List
+
+router = APIRouter()
+
+# ==================== Path 参数 ====================
+
+@router.get("/users/{user_id}")
+async def get_user(
+    user_id: UUID = Path(..., description="用户 ID", example="550e8400-e29b-41d4-a716-446655440000")
+):
+    """获取单个用户"""
+    ...
+
+# ==================== Query 参数 ====================
+
+@router.get("/users")
+async def list_users(
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(10, ge=1, le=100, description="每页数量"),
+    sort: str = Query("created_at", description="排序字段"),
+    order: str = Query("desc", regex="^(asc|desc)$", description="排序方向"),
+    status: Optional[str] = Query(None, description="状态过滤"),
+    fields: Optional[str] = Query(None, description="字段选择"),
+):
+    """获取用户列表"""
+    ...
+
+# ==================== Request Body ====================
+
+class UserCreate(BaseModel):
+    """创建用户请求体"""
+    email: EmailStr = Field(..., description="用户邮箱", example="user@example.com")
+    name: str = Field(..., min_length=1, max_length=100, description="用户名称")
+    password: str = Field(..., min_length=8, description="密码")
+    role_id: UUID = Field(..., description="角色 ID")
+    is_active: bool = Field(True, description="是否激活")
+
+class UserUpdate(BaseModel):
+    """更新用户请求体（部分字段）"""
+    email: Optional[EmailStr] = Field(None, description="用户邮箱")
+    name: Optional[str] = Field(None, min_length=1, max_length=100, description="用户名称")
+    role_id: Optional[UUID] = Field(None, description="角色 ID")
+    is_active: Optional[bool] = Field(None, description="是否激活")
+
+# ==================== Response ====================
+
+class UserResponse(BaseModel):
+    """用户响应"""
+    id: UUID
+    email: str
+    name: str
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class UserListResponse(BaseModel):
+    """用户列表响应"""
+    users: List[UserResponse]
+    pagination: dict
+```
+
+### Frontend 实现（TypeScript）
+
+```typescript
+// ==================== 类型定义 ====================
+
+interface User {
+  id: string
+  email: string
+  name: string
+  is_active: boolean
+  created_at: string  // ISO 8601
+  updated_at: string
+}
+
+interface ListUsersParams {
+  page?: number
+  page_size?: number
+  sort?: string
+  order?: 'asc' | 'desc'
+  status?: string
+  fields?: string
+}
+
+interface UserCreate {
+  email: string
+  name: string
+  password: string
+  role_id: string
+  is_active?: boolean
+}
+
+interface UserUpdate {
+  email?: string
+  name?: string
+  role_id?: string
+  is_active?: boolean
+}
+
+// ==================== API 调用 ====================
+
+// 获取单个用户
+const user = await apiClient.get(`/users/${userId}`)
+
+// 获取用户列表
+const users = await apiClient.get('/users', {
+  params: {
+    page: 1,
+    page_size: 10,
+    sort: 'created_at',
+    order: 'desc'
+  }
+})
+
+// 创建用户
+const newUser = await apiClient.post('/users', {
+  email: 'user@example.com',
+  name: '张三',
+  password: 'secure_password',
+  role_id: 'uuid-123',
+  is_active: true
+})
+
+// 更新用户
+await apiClient.patch(`/users/${userId}`, {
+  name: '新名字'
+})
+```
+
+---
+
+## 📋 检查清单
+
+### API 设计
+
+- [ ] Path 参数使用 snake_case
+- [ ] Query 参数使用 snake_case
+- [ ] Request Body 使用 snake_case
+- [ ] Response 字段使用 snake_case
+- [ ] 资源 ID 使用 UUID
+- [ ] 时间字段使用 ISO 8601
+- [ ] 布尔字段使用 `is_`, `has_`, `can_` 前缀
+
+### 分页设计
+
+- [ ] 使用标准分页参数（page, page_size）
+- [ ] 返回分页元数据
+- [ ] 支持排序参数
+- [ ] 支持过滤参数
+- [ ] 支持字段选择
+
+### 错误处理
+
+- [ ] 使用标准错误格式
+- [ ] 包含错误码和消息
+- [ ] 支持字段级错误详情
+- [ ] 包含 timestamp 和 path
+
+### 文档
+
+- [ ] OpenAPI 规范完整
+- [ ] 参数说明清晰
+- [ ] 示例完整
+- [ ] 更新及时
+
+---
+
+## 🔗 参考资源
+
+### 标准文档
+
+- **[RFC 3986](https://tools.ietf.org/html/rfc3986)** - URI 通用语法
+- **[RFC 7231](https://tools.ietf.org/html/rfc7231)** - HTTP 语义
+- **[RFC 7807](https://tools.ietf.org/html/rfc7807)** - HTTP API 问题详情
+- **[RFC 3339](https://tools.ietf.org/html/rfc3339)** - 日期时间格式
+- **[RFC 4122](https://tools.ietf.org/html/rfc4122)** - UUID 格式
+
+### 行业实践
+
+- **[Google API Design Guide](https://cloud.google.com/apis/design)** - Google API 设计
+- **[Microsoft REST API Guidelines](https://github.com/microsoft/api-guidelines)** - Microsoft API 规范
+- **[Zalando RESTful API Guidelines](https://opensource.zalando.com/restful-api-guidelines/)** - Zalando API 规范
+- **[JSON:API](https://jsonapi.org/)** - JSON API 规范
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，包含完整的参数设计规范 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**默认规范**: snake_case 命名 + UUID + ISO 8601

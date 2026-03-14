@@ -1,0 +1,114 @@
+# Rule: Elasticsearch 查询规则
+
+## 适用场景
+
+- Elasticsearch 数据查询
+- 后端服务层开发
+- 数据检索优化
+
+## 规则内容
+
+### 1. 字段类型处理
+
+**text 类型字段** - 使用 `.keyword` 子字段：
+```python
+# ✅ 正确
+{"term": {"user_id.keyword": str(user_id)}}
+{"term": {"status.keyword": "wait_for_approver_node1"}}
+
+# ❌ 错误
+{"term": {"user_id": str(user_id)}}  # text 类型会被分词
+```
+
+### 2. 日期范围查询
+
+使用 ISO 格式字符串：
+```python
+# ✅ 正确
+{"range": {"visit_date": {"gte": "2025-01-01"}}}
+
+# 注意：ES 中 date 类型字段使用字符串格式
+```
+
+### 3. 查询结构
+
+标准查询结构：
+```python
+query = {
+    "query": {
+        "bool": {
+            "must": [
+                {"term": {"user_id.keyword": str(user_id)}},
+                {"range": {"visit_date": {"gte": from_date.isoformat()}}}
+            ]
+        }
+    },
+    "sort": [{"visit_date": {"order": "desc"}}],
+    "from": (page - 1) * page_size,
+    "size": page_size,
+}
+```
+
+## 示例
+
+### ✅ 正确示例
+
+```python
+# 精确匹配 + 日期范围
+query = {
+    "query": {
+        "bool": {
+            "must": [
+                {"term": {"user_id.keyword": "b3022707-d89d-4e48-a304-d7e9a079721c"}},
+                {"range": {"visit_date": {"gte": "2025-01-01"}}}
+            ]
+        }
+    },
+    "sort": [{"created_at": {"order": "desc"}}],
+    "from": 0,
+    "size": 10,
+}
+
+response = await es_client.search(index="reservations", body=query)
+```
+
+### ❌ 错误示例
+
+```python
+# ❌ text 类型用 term 查询（会被分词）
+query = {
+    "query": {
+        "term": {"user_id": "b3022707-d89d-4e48-a304-d7e9a079721c"}
+    }
+}
+
+# ❌ 日期格式错误
+query = {
+    "query": {
+        "range": {"visit_date": {"gte": datetime(2025, 1, 1)}}  # 应该用字符串
+    }
+}
+```
+
+## 检查清单
+
+执行 ES 查询前检查：
+
+- [ ] 检查字段 mapping（text vs keyword）
+- [ ] text 类型使用 `.keyword` 子字段
+- [ ] 日期使用 ISO 格式字符串
+- [ ] 包含分页参数（from, size）
+- [ ] 包含排序规则（sort）
+
+## 相关规则
+
+- [python.rule](../tech/python.rule) - Python 编码规范
+- [fastapi.rule](../tech/fastapi.rule) - FastAPI 开发规范
+
+## 版本历史
+
+- v1.0 (2026-03-14) - 初始版本，基于实际项目 bug 经验
+
+## 参考案例
+
+- [ES 查询问题案例](../case-studies/es-keyword-issue.md) - user_id 字段类型导致的空数据问题

@@ -1,0 +1,118 @@
+# Rule: API 尾部斜杠规则
+
+## 适用场景
+
+- FastAPI 后端路由定义
+- 前端 API 调用
+- API 文档编写
+- 代码审查
+
+## 规则内容
+
+### 1. 后端路由定义
+
+**列表端点**（需要 `/`）：
+```python
+@router.get("/", response_model=List[UserResponse])
+async def get_users():
+    """获取用户列表"""
+```
+
+**单个资源**（不需要 `/`）：
+```python
+@router.get("/{user_id}", response_model=UserResponse)
+async def get_user(user_id: UUID):
+    """获取单个用户"""
+```
+
+**操作端点**（不需要 `/`）：
+```python
+@router.patch("/{user_id}", response_model=UserResponse)
+async def update_user(user_id: UUID, data: UserUpdate):
+    """更新用户"""
+```
+
+### 2. 前端 API 调用
+
+**✅ 正确** - 让拦截器处理：
+```typescript
+// 列表端点 - 不加斜杠，拦截器会自动添加
+const response = await apiClient.get('/users')
+
+// 单个资源 - 不加斜杠
+const response = await apiClient.get(`/users/${id}`)
+```
+
+**❌ 错误** - 硬编码斜杠：
+```typescript
+const response = await apiClient.get('/users/')  // ❌
+const response = await apiClient.get(`/users/${id}/`)  // ❌
+```
+
+### 3. 斜杠规则速查表
+
+| 路由类型 | 后端定义 | 前端调用 | 示例 |
+|---------|---------|---------|------|
+| 列表端点 | `@router.get('/')` | 需要 `/` | `/roles/`, `/users/`, `/museums/` |
+| 单个资源 | `@router.get('/{id}')` | 不需要 `/` | `/roles/{id}`, `/users/{id}` |
+| 嵌套资源 | `@router.get('/{id}/halls')` | 不需要 `/` | `/museums/{id}/halls` |
+| 特殊列表 | `@router.get('/mine')` | 不需要 `/` | `/reservations/mine`, `/reservations/pending/node1` |
+| 操作端点 | `@router.patch('/{id}/withdraw')` | 不需要 `/` | `/reservations/{id}/withdraw` |
+| 认证端点 | `@router.post('/jwt/login')` | 不需要 `/` | `/auth/jwt/login`, `/auth/me` |
+
+**记忆口诀**：**只有最基础的列表端点（`/`）需要斜杠，其他都不要。**
+
+## 示例
+
+### ✅ 正确示例
+
+**后端**：
+```python
+# 列表 - 需要斜杠
+@router.get("/", response_model=List[RoleResponse])
+async def get_roles():
+    ...
+
+# 单个 - 不需要斜杠
+@router.get("/{role_id}", response_model=RoleResponse)
+async def get_role(role_id: UUID):
+    ...
+```
+
+**前端**：
+```typescript
+// 列表 - 拦截器会自动添加斜杠
+const roles = await apiClient.get('/roles')
+
+// 单个 - 不添加斜杠
+const role = await apiClient.get(`/roles/${id}`)
+```
+
+### ❌ 错误示例
+
+**后端**：
+```python
+# ❌ 列表端点不应该定义具体路径
+@router.get("/list", response_model=List[RoleResponse])
+async def get_roles():
+    ...
+```
+
+**前端**：
+```typescript
+// ❌ 硬编码斜杠
+const roles = await apiClient.get('/roles/')
+
+// ❌ 单个资源加斜杠
+const role = await apiClient.get(`/roles/${id}/`)
+```
+
+## 相关规则
+
+- [api-design.rule](./api-design.rule) - API 设计原则
+- [vue3.rule](../tech/vue3.rule) - Vue3 开发规范
+- [fastapi.rule](../tech/fastapi.rule) - FastAPI 开发规范
+
+## 版本历史
+
+- v1.0 (2026-03-14) - 初始版本，基于实际项目经验

@@ -1,0 +1,625 @@
+# Skill: Python 测试（pytest）
+
+> 基于 Google、Microsoft 最佳实践的 Python 测试技能
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🔴 高（核心技能）
+
+---
+
+## 📋 前置技能
+
+- ✅ [testing-principles.skill](../testing-principles.skill) - 测试原则与策略
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[Google Testing Blog](https://testing.googleblog.com/)** - Google 测试最佳实践
+- **[pytest Documentation](https://docs.pytest.org/)** - pytest 官方文档
+- **[Microsoft Python Testing](https://docs.microsoft.com/en-us/python/)** - Microsoft Python 测试指南
+
+### 工具栈
+
+- **pytest** - 测试框架
+- **pytest-cov** - 覆盖率统计
+- **pytest-asyncio** - 异步测试
+- **pytest-mock** - Mock 工具
+- **factory_boy** - 测试数据工厂
+- **httpx** - HTTP 测试客户端
+
+---
+
+## 🎯 测试分层
+
+### 单元测试（70%）
+
+**测试范围**:
+```markdown
+- [ ] 单个函数
+- [ ] 单个类方法
+- [ ] 工具函数
+- [ ] 数据验证
+- [ ] 业务逻辑
+```
+
+**特点**:
+```
+✅ 快速执行 (<100ms)
+✅ Mock 外部依赖
+✅ 高覆盖率 (80%+)
+✅ 独立执行
+```
+
+---
+
+### 集成测试（20%）
+
+**测试范围**:
+```markdown
+- [ ] 数据库操作
+- [ ] API 端点
+- [ ] 模块交互
+- [ ] 缓存操作
+- [ ] 消息队列
+```
+
+**特点**:
+```
+✅ 使用真实数据库
+✅ Mock 外部 API
+✅ 中等速度 (<1s)
+✅ 测试模块交互
+```
+
+---
+
+### E2E 测试（10%）
+
+**测试范围**:
+```markdown
+- [ ] 关键用户流程
+- [ ] 完整业务流程
+- [ ] 跨系统集成
+```
+
+**特点**:
+```
+✅ 真实环境
+✅ 慢速执行 (<10s)
+✅ 关键路径覆盖
+✅ 高维护成本
+```
+
+---
+
+## 📏 单元测试
+
+### pytest 基础
+
+**测试文件结构**:
+```
+tests/
+├── __init__.py
+├── conftest.py          # 共享 fixtures
+├── test_users.py        # 用户相关测试
+├── test_auth.py         # 认证相关测试
+└── test_api/
+    ├── __init__.py
+    ├── test_users.py    # API 测试
+    └── test_reservations.py
+```
+
+**测试命名规范**:
+```python
+# ✅ 好的命名
+def test_user_creation_with_valid_email():
+    ...
+
+def test_user_creation_with_invalid_email_raises_error():
+    ...
+
+def test_user_deletion_when_user_does_not_exist_raises_error():
+    ...
+```
+
+---
+
+### AAA 模式实践
+
+**完整示例**:
+```python
+import pytest
+from app.services.user_service import create_user
+from app.schemas.user import UserCreate
+
+def test_user_creation_with_valid_data():
+    # Arrange（准备）
+    user_data = UserCreate(
+        email="test@example.com",
+        name="Test User",
+        password="SecurePass123"
+    )
+    mock_db = Mock()
+    
+    # Act（执行）
+    user = create_user(mock_db, user_data)
+    
+    # Assert（断言）
+    assert user.email == "test@example.com"
+    assert user.name == "Test User"
+    assert user.is_active is True
+    assert user.id is not None
+```
+
+---
+
+### pytest Fixtures
+
+**Fixture 定义**:
+```python
+# conftest.py
+import pytest
+from app.db.session import get_db
+
+@pytest.fixture
+def mock_db():
+    """Mock 数据库会话"""
+    db = Mock()
+    db.execute = AsyncMock()
+    db.commit = AsyncMock()
+    db.rollback = AsyncMock()
+    return db
+
+@pytest.fixture
+def user_data():
+    """用户测试数据"""
+    return {
+        "email": "test@example.com",
+        "name": "Test User",
+        "password": "SecurePass123"
+    }
+
+@pytest.fixture
+def auth_headers(client):
+    """认证请求头"""
+    def _auth_headers(token: str):
+        return {"Authorization": f"Bearer {token}"}
+    return _auth_headers
+```
+
+**使用 Fixtures**:
+```python
+def test_user_creation(mock_db, user_data):
+    # 使用 fixture 提供的数据
+    user = create_user(mock_db, user_data)
+    assert user.email == user_data["email"]
+
+def test_multiple_users(mock_db, user_data):
+    # 同一个 fixture 可以在多个测试中使用
+    user1 = create_user(mock_db, user_data)
+    user_data["email"] = "test2@example.com"
+    user2 = create_user(mock_db, user_data)
+    assert user1.id != user2.id
+```
+
+---
+
+### Mock 外部依赖
+
+**Mock 数据库**:
+```python
+from unittest.mock import Mock, AsyncMock
+
+def test_user_query(mock_db):
+    # Mock 数据库查询
+    mock_result = Mock()
+    mock_result.scalar_one_or_none.return_value = Mock(id=1, email="test@example.com")
+    mock_db.execute.return_value = mock_result
+    
+    user = get_user_by_email(mock_db, "test@example.com")
+    
+    assert user.email == "test@example.com"
+    mock_db.execute.assert_called_once()
+```
+
+**Mock 外部 API**:
+```python
+import pytest
+from unittest.mock import patch
+
+@patch('requests.get')
+def test_external_api_call(mock_get):
+    # Mock HTTP 响应
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {"data": "test"}
+    mock_get.return_value = mock_response
+    
+    result = call_external_api()
+    
+    assert result == {"data": "test"}
+    mock_get.assert_called_once()
+```
+
+**Mock 时间**:
+```python
+from freezegun import freeze_time
+from datetime import datetime
+
+@freeze_time("2026-03-14 10:00:00")
+def test_token_expiration():
+    # 固定时间
+    token = create_access_token(user_id=1)
+    # 可以准确测试过期时间
+    assert token.exp == datetime(2026, 3, 14, 10, 15, 0)
+```
+
+---
+
+### 参数化测试
+
+**参数化示例**:
+```python
+import pytest
+
+@pytest.mark.parametrize("email,expected", [
+    ("test@example.com", True),
+    ("invalid-email", False),
+    ("@example.com", False),
+    ("test@", False),
+    ("", False),
+])
+def test_email_validation(email, expected):
+    result = is_valid_email(email)
+    assert result == expected
+```
+
+**多参数参数化**:
+```python
+@pytest.mark.parametrize("password,expected", [
+    ("Short1!", False),  # 太短
+    ("LongEnoughButNoSpecial123", False),  # 无特殊字符
+    ("NoDigitsHere!", False),  # 无数字
+    ("ValidPass123!", True),  # 有效
+])
+def test_password_validation(password, expected):
+    result = is_valid_password(password)
+    assert result == expected
+```
+
+---
+
+### 异常测试
+
+**测试异常抛出**:
+```python
+def test_user_creation_with_invalid_email():
+    user_data = {"email": "invalid", "name": "Test"}
+    
+    with pytest.raises(ValueError) as exc_info:
+        create_user(user_data)
+    
+    assert "email" in str(exc_info.value).lower()
+```
+
+**测试特定异常**:
+```python
+def test_user_not_found():
+    with pytest.raises(UserNotFoundError) as exc_info:
+        get_user_by_id(999)
+    
+    assert exc_info.value.user_id == 999
+```
+
+---
+
+## 📏 集成测试
+
+### 数据库测试
+
+**测试数据库会话**:
+```python
+# conftest.py
+import pytest
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from app.db.base import Base
+
+@pytest.fixture
+async def test_db():
+    """创建测试数据库会话"""
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    
+    async with AsyncSession(engine) as session:
+        yield session
+    
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
+async def test_user_persistence(test_db):
+    # 使用真实数据库
+    user = User(email="test@example.com", name="Test")
+    test_db.add(user)
+    await test_db.commit()
+    
+    # 验证数据持久化
+    result = await test_db.execute(select(User).where(User.email == "test@example.com"))
+    saved_user = result.scalar_one()
+    assert saved_user is not None
+    assert saved_user.id == user.id
+```
+
+---
+
+### API 测试
+
+**TestClient 使用**:
+```python
+from fastapi.testclient import TestClient
+from app.main import app
+
+client = TestClient(app)
+
+def test_user_creation_api():
+    response = client.post(
+        "/api/v1/users",
+        json={
+            "email": "test@example.com",
+            "name": "Test User",
+            "password": "SecurePass123"
+        }
+    )
+    
+    assert response.status_code == 201
+    data = response.json()
+    assert data["email"] == "test@example.com"
+    assert "id" in data
+```
+
+**认证测试**:
+```python
+def test_protected_endpoint_requires_auth():
+    # 未认证访问
+    response = client.get("/api/v1/users/me")
+    assert response.status_code == 401
+
+def test_protected_endpoint_with_valid_token(auth_token):
+    # 认证访问
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    response = client.get("/api/v1/users/me", headers=headers)
+    assert response.status_code == 200
+```
+
+---
+
+### 错误处理测试
+
+**测试错误响应**:
+```python
+def test_user_creation_with_duplicate_email():
+    # 创建第一个用户
+    client.post("/api/v1/users", json={
+        "email": "test@example.com",
+        "name": "Test",
+        "password": "Pass123"
+    })
+    
+    # 尝试创建重复邮箱
+    response = client.post("/api/v1/users", json={
+        "email": "test@example.com",
+        "name": "Test2",
+        "password": "Pass123"
+    })
+    
+    assert response.status_code == 400
+    assert "email" in response.json()["detail"].lower()
+```
+
+---
+
+## 📏 E2E 测试
+
+### Playwright 配置
+
+**配置文件**:
+```python
+# playwright.config.py
+from playwright.sync_api import sync_playwright
+
+def test_login_flow():
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page()
+        
+        # 访问登录页面
+        page.goto("http://localhost:5173/login")
+        
+        # 填写表单
+        page.fill("#email", "admin@example.com")
+        page.fill("#password", "admin123")
+        page.click("#login")
+        
+        # 验证跳转
+        page.wait_for_url("http://localhost:5173/dashboard")
+        expect(page.locator(".welcome")).to_be_visible()
+        
+        browser.close()
+```
+
+---
+
+## 📊 测试覆盖率
+
+### 覆盖率配置
+
+**pytest.ini**:
+```ini
+[pytest]
+testpaths = tests
+python_files = test_*.py
+python_functions = test_*
+addopts = 
+    --cov=app
+    --cov-report=html
+    --cov-report=term-missing
+    --cov-fail-under=80
+```
+
+**运行覆盖率**:
+```bash
+# 运行测试并生成覆盖率报告
+pytest --cov=app --cov-report=html
+
+# 查看覆盖率
+pytest --cov=app --cov-report=term-missing
+
+# 生成 XML 报告（CI/CD）
+pytest --cov=app --cov-report=xml
+```
+
+---
+
+### 覆盖率目标
+
+**最低要求**:
+```markdown
+### 行覆盖率
+- 最低：70%
+- 目标：80%
+- 优秀：90%
+
+### 分支覆盖率
+- 最低：60%
+- 目标：70%
+- 优秀：80%
+```
+
+---
+
+## 🔧 测试工具
+
+### 测试数据工厂
+
+**factory_boy 使用**:
+```python
+# tests/factories.py
+import factory
+from app.models.user import User
+
+class UserFactory(factory.Factory):
+    class Meta:
+        model = User
+    
+    email = factory.Sequence(lambda n: f"user{n}@example.com")
+    name = factory.Faker("name")
+    is_active = True
+```
+
+**使用工厂**:
+```python
+def test_user_query():
+    # 创建测试数据
+    user = UserFactory()
+    
+    # 测试查询
+    result = get_user_by_id(user.id)
+    assert result.email == user.email
+```
+
+---
+
+### 测试辅助函数
+
+**辅助函数**:
+```python
+# tests/helpers.py
+def create_test_user(db, email=None, **kwargs):
+    """创建测试用户"""
+    user_data = {
+        "email": email or f"test_{uuid.uuid4()}@example.com",
+        "name": "Test User",
+        "password": "TestPass123",
+        **kwargs
+    }
+    return create_user(db, user_data)
+
+def get_auth_token(client, email, password):
+    """获取认证 Token"""
+    response = client.post("/api/v1/auth/login", data={
+        "username": email,
+        "password": password
+    })
+    return response.json()["access_token"]
+```
+
+---
+
+## 📋 测试检查清单
+
+### 单元测试
+
+- [ ] 遵循 AAA 模式
+- [ ] 使用 pytest fixtures
+- [ ] Mock 外部依赖
+- [ ] 参数化测试
+- [ ] 异常测试
+- [ ] 覆盖率 >80%
+
+### 集成测试
+
+- [ ] 使用测试数据库
+- [ ] 测试 API 端点
+- [ ] 测试错误处理
+- [ ] 测试认证流程
+- [ ] 清理测试数据
+
+### E2E 测试
+
+- [ ] 测试关键用户流程
+- [ ] 使用 Page Object 模式
+- [ ] 测试跨浏览器
+- [ ] 测试响应式设计
+- [ ] 测试可访问性
+
+### 测试质量
+
+- [ ] 测试快速执行
+- [ ] 测试独立
+- [ ] 测试可重复
+- [ ] 清晰的错误消息
+- [ ] 测试文档完整
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[pytest Documentation](https://docs.pytest.org/)** - pytest 官方文档
+- **[Google Testing Blog](https://testing.googleblog.com/)** - Google 测试最佳实践
+- **[Microsoft Python Testing](https://docs.microsoft.com/en-us/python/)** - Microsoft Python 测试指南
+
+### 学习资源
+
+- **[Test-Driven Development with Python](https://www.obeythetestinggoat.com/)** - TDD 书籍
+- **[pytest-tricks](https://github.com/gabrielcnr/pytest-tricks)** - pytest 技巧
+- **[Python Testing with pytest](https://pragprog.com/titles/bopytest/python-testing-with-pytest/)** - pytest 书籍
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，基于 Google/Microsoft 最佳实践 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🔴 高（核心技能）

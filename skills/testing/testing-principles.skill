@@ -1,0 +1,538 @@
+# Skill: 测试原则与策略
+
+> 基于 Google、Microsoft、Stripe 最佳实践的通用测试原则
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🔴 高（核心技能）
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[Google Testing Blog](https://testing.googleblog.com/)** - Google 测试最佳实践
+- **[Microsoft Engineering Guidelines](https://github.com/microsoft/eng-guidelines)** - Microsoft 工程指南
+- **[Stripe Engineering Blog](https://stripe.com/blog)** - Stripe 测试文化
+- **[AWS Well-Architected Framework](https://aws.amazon.com/architecture/well-architected/)** - AWS 测试策略
+
+### 行业最佳实践
+
+- **Test Pyramid** - 测试金字塔
+- **FIRST Principles** - FIRST 原则
+- **TDD (Test-Driven Development)** - 测试驱动开发
+- **AAA Pattern (Arrange-Act-Assert)** - AAA 模式
+
+---
+
+## 🎯 核心原则
+
+### 1. 测试金字塔 (Test Pyramid)
+
+> "多写单元测试，少写 E2E 测试。"
+> — Google Testing Blog
+
+**测试分层**:
+```
+        /\
+       /  \
+      / E2E \     10% - 关键用户流程
+     /______\
+    /        \
+   /Integration\  20% - 模块间交互
+  /______________\
+ /                \
+/   Unit Tests     \  70% - 单个函数/类
+____________________\
+```
+
+**各层特点**:
+| 层级 | 比例 | 速度 | 稳定性 | 维护成本 |
+|------|------|------|--------|---------|
+| **单元测试** | 70% | <100ms | 高 | 低 |
+| **集成测试** | 20% | <1s | 中 | 中 |
+| **E2E 测试** | 10% | <10s | 低 | 高 |
+
+---
+
+### 2. FIRST 原则
+
+> "好的测试应该符合 FIRST 原则。"
+> — Agile Testing
+
+#### Fast（快速）
+```
+✅ 测试应该快速执行
+✅ 快速反馈循环
+✅ 鼓励频繁运行
+
+❌ 避免慢速测试
+❌ 避免外部依赖
+❌ 避免复杂设置
+```
+
+#### Independent（独立）
+```
+✅ 测试之间不依赖
+✅ 可以任意顺序执行
+✅ 可以并行执行
+
+❌ 避免测试顺序依赖
+❌ 避免共享状态
+❌ 避免全局变量
+```
+
+#### Repeatable（可重复）
+```
+✅ 相同输入相同输出
+✅ 无环境依赖
+✅ 无随机性
+
+❌ 避免随机数据
+❌ 避免时间依赖
+❌ 避免环境依赖
+```
+
+#### Self-Validating（自验证）
+```
+✅ 自动判断成功失败
+✅ 清晰的断言
+✅ 明确的错误消息
+
+❌ 避免手动验证
+❌ 避免模糊断言
+❌ 避免无消息失败
+```
+
+#### Timely（及时）
+```
+✅ 测试先于代码（TDD）
+✅ 或者与代码同时
+✅ 不滞后太久
+
+❌ 避免事后补测试
+❌ 避免测试滞后
+❌ 避免无测试代码
+```
+
+---
+
+### 3. 测试即文档 (Tests as Documentation)
+
+> "测试展示代码如何使用。"
+> — Stripe Engineering
+
+**测试文档化**:
+```
+✅ 测试名称描述意图
+✅ 测试展示使用示例
+✅ 测试展示预期行为
+✅ 测试保持更新
+
+❌ 避免模糊名称
+❌ 避免过时测试
+❌ 避免无意义测试
+```
+
+**示例**:
+```python
+# ❌ 差的测试名称
+def test_user():
+    ...
+
+# ✅ 好的测试名称
+def test_user_creation_with_valid_email():
+    """测试使用有效邮箱创建用户"""
+    ...
+
+def test_user_creation_with_invalid_email_raises_error():
+    """测试使用无效邮箱创建用户抛出错误"""
+    ...
+```
+
+---
+
+## 📏 测试设计模式
+
+### AAA 模式 (Arrange-Act-Assert)
+
+**结构**:
+```python
+def test_example():
+    # Arrange（准备）
+    # 准备测试数据和环境
+    user_data = {"email": "test@example.com", "name": "Test"}
+    
+    # Act（执行）
+    # 执行被测试的代码
+    user = create_user(user_data)
+    
+    # Assert（断言）
+    # 验证结果是否符合预期
+    assert user.email == "test@example.com"
+    assert user.name == "Test"
+```
+
+**各部分职责**:
+```markdown
+### Arrange（准备）
+- 准备测试数据
+- Mock 外部依赖
+- 设置测试环境
+
+### Act（执行）
+- 调用被测试函数
+- 触发被测试行为
+- 只执行一次
+
+### Assert（断言）
+- 验证返回值
+- 验证副作用
+- 验证状态变化
+```
+
+---
+
+### 测试数据工厂模式
+
+**工厂函数**:
+```python
+# 测试数据工厂
+def create_user_factory(email=None, name=None, is_active=True, **kwargs):
+    """创建用户测试数据"""
+    return {
+        "email": email or f"user_{uuid.uuid4()}@example.com",
+        "name": name or "Test User",
+        "is_active": is_active,
+        **kwargs
+    }
+
+def create_product_factory(name=None, price=None, **kwargs):
+    """创建产品测试数据"""
+    return {
+        "name": name or "Test Product",
+        "price": price or 99.99,
+        **kwargs
+    }
+```
+
+**使用工厂**:
+```python
+def test_user_creation():
+    # 使用工厂创建测试数据
+    user_data = create_user_factory(email="test@example.com")
+    user = create_user(user_data)
+    assert user.email == "test@example.com"
+
+def test_user_creation_with_defaults():
+    # 使用默认值
+    user_data = create_user_factory()
+    user = create_user(user_data)
+    assert user.is_active is True
+```
+
+---
+
+### Page Object 模式（E2E 测试）
+
+**Page 类**:
+```python
+class LoginPage:
+    """登录页面"""
+    
+    def __init__(self, page):
+        self.page = page
+        self.email_input = page.locator("#email")
+        self.password_input = page.locator("#password")
+        self.login_button = page.locator("#login")
+    
+    def login(self, email, password):
+        """执行登录"""
+        self.email_input.fill(email)
+        self.password_input.fill(password)
+        self.login_button.click()
+        return DashboardPage(self.page)
+
+class DashboardPage:
+    """仪表板页面"""
+    
+    def __init__(self, page):
+        self.page = page
+        self.welcome = page.locator(".welcome")
+    
+    def get_welcome_message(self):
+        """获取欢迎消息"""
+        return self.welcome.inner_text()
+```
+
+**使用 Page Object**:
+```python
+def test_login_flow():
+    login_page = LoginPage(page)
+    dashboard = login_page.login("user@example.com", "password")
+    expect(dashboard.welcome).to_be_visible()
+```
+
+---
+
+## 📋 测试覆盖策略
+
+### 代码覆盖
+
+**覆盖类型**:
+```markdown
+### 行覆盖率 (Line Coverage)
+- 执行过的行数 / 总行数
+- 目标：80%+
+
+### 分支覆盖率 (Branch Coverage)
+- 执行过的分支 / 总分支
+- 目标：70%+
+
+### 函数覆盖率 (Function Coverage)
+- 执行过的函数 / 总函数
+- 目标：80%+
+```
+
+**覆盖工具**:
+```bash
+# Python
+pytest --cov=app --cov-report=html
+
+# JavaScript
+npm test -- --coverage
+```
+
+---
+
+### 场景覆盖
+
+**覆盖清单**:
+```markdown
+### 正常路径
+- [ ] 有效输入
+- [ ] 标准流程
+- [ ] 预期输出
+
+### 异常路径
+- [ ] 无效输入
+- [ ] 错误处理
+- [ ] 异常抛出
+
+### 边界条件
+- [ ] 最小值
+- [ ] 最大值
+- [ ] 空值
+- [ ] 空集合
+
+### 特殊场景
+- [ ] 并发场景
+- [ ] 超时场景
+- [ ] 网络故障
+- [ ] 资源不足
+```
+
+---
+
+### 数据覆盖
+
+**数据类型**:
+```markdown
+### 有效数据
+- 标准数据
+- 边界数据
+- 特殊字符
+
+### 无效数据
+- 类型错误
+- 格式错误
+- 超出范围
+
+### 边界数据
+- 最小值/最大值
+- 空字符串
+- 空列表
+- None/Null
+
+### 特殊数据
+- Unicode 字符
+- SQL 注入尝试
+- XSS 尝试
+- 超长字符串
+```
+
+---
+
+## 🔧 Mock 和 Stub
+
+### Mock 使用场景
+
+**应该 Mock**:
+```markdown
+- [ ] 外部 API 调用
+- [ ] 数据库操作
+- [ ] 文件系统
+- [ ] 网络请求
+- [ ] 时间相关
+- [ ] 随机数生成
+```
+
+**不应该 Mock**:
+```markdown
+- [ ] 纯函数
+- [ ] 简单逻辑
+- [ ] 被测试的核心逻辑
+```
+
+---
+
+### Mock 最佳实践
+
+**Mock 原则**:
+```
+✅ 只 Mock 必要的
+✅ 验证 Mock 调用
+✅ 使用 Mock 库
+✅ 清晰的 Mock 设置
+
+❌ 不要过度 Mock
+❌ 不要 Mock 被测试逻辑
+❌ 不要忽略 Mock 验证
+```
+
+**Mock 示例**:
+```python
+from unittest.mock import Mock, patch
+
+# Mock 外部 API
+def test_external_api_call():
+    with patch('requests.get') as mock_get:
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {"data": "test"}
+        
+        result = call_external_api()
+        
+        assert result == {"data": "test"}
+        mock_get.assert_called_once()
+
+# Mock 数据库
+def test_database_query():
+    mock_db = Mock()
+    mock_db.query.return_value = [{"id": 1, "name": "Test"}]
+    
+    result = query_database(mock_db)
+    
+    assert len(result) == 1
+    mock_db.query.assert_called_once()
+```
+
+---
+
+## 📊 测试质量指标
+
+### 测试健康度
+
+**指标**:
+```markdown
+### 执行时间
+- 单元测试：<100ms
+- 集成测试：<1s
+- E2E 测试：<10s
+- 总测试时间：<10min
+
+### 稳定性
+- 通过率：>95%
+- 失败率：<5%
+- 误报率：<1%
+
+### 覆盖率
+- 行覆盖率：>80%
+- 分支覆盖率：>70%
+- 函数覆盖率：>80%
+```
+
+---
+
+### 测试债务
+
+**债务指标**:
+```markdown
+### 测试代码质量
+- 重复代码：<10%
+- 测试行数/生产代码行数：1:1 ~ 2:1
+- 测试复杂度：低
+
+### 维护成本
+- 失败测试修复时间：<1 天
+- 测试更新频率：适中
+- 测试文档完整度：高
+```
+
+---
+
+## 📋 测试检查清单
+
+### 测试设计
+
+- [ ] 测试名称清晰描述意图
+- [ ] 遵循 AAA 模式
+- [ ] 一个测试一个断言
+- [ ] 测试数据独立
+- [ ] 无副作用
+
+### 测试覆盖
+
+- [ ] 正常路径覆盖
+- [ ] 异常路径覆盖
+- [ ] 边界条件覆盖
+- [ ] 错误处理覆盖
+- [ ] 关键业务逻辑覆盖
+
+### 测试质量
+
+- [ ] 测试快速执行
+- [ ] 测试独立
+- [ ] 测试可重复
+- [ ] 测试自验证
+- [ ] 测试及时编写
+
+### 测试维护
+
+- [ ] 无重复代码
+- [ ] 使用测试辅助函数
+- [ ] 测试数据工厂
+- [ ] 清晰的错误消息
+- [ ] 测试文档完整
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[Google Testing Blog](https://testing.googleblog.com/)** - Google 测试最佳实践
+- **[Microsoft Engineering Guidelines](https://github.com/microsoft/eng-guidelines)** - Microsoft 工程指南
+- **[Stripe Engineering Blog](https://stripe.com/blog)** - Stripe 测试文化
+- **[AWS Well-Architected Framework](https://aws.amazon.com/architecture/well-architected/)** - AWS 测试策略
+
+### 学习资源
+
+- **[Test Pyramid](https://martinfowler.com/bliki/TestPyramid.html)** - 测试金字塔
+- **[FIRST Principles](https://www.agilealliance.org/glossary/first/)** - FIRST 原则
+- **[TDD](https://agiledata.org/essays/tdd.html)** - 测试驱动开发
+- **[AAA Pattern](http://xunitpatterns.com/Three%20A%27s.html)** - AAA 模式
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，基于 Google/Microsoft/Stripe 最佳实践 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🔴 高（核心技能）

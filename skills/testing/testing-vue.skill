@@ -1,0 +1,732 @@
+# Skill: Vue 组件测试
+
+> 基于 Google、Microsoft 最佳实践的 Vue 3 组件测试技能
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🟡 中（核心技能）
+
+---
+
+## 📋 前置技能
+
+- ✅ [testing-principles.skill](../testing-principles.skill) - 测试原则与策略
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[Vue Test Utils Documentation](https://test-utils.vuejs.org/)** - Vue Test Utils 官方文档
+- **[Vitest Documentation](https://vitest.dev/)** - Vitest 测试框架
+- **[Testing Library](https://testing-library.com/docs/vue-testing-library/intro/)** - Testing Library
+
+### 工具栈
+
+- **Vitest** - 测试框架
+- **@vue/test-utils** - Vue 组件测试工具
+- **@testing-library/vue** - Testing Library
+- **Playwright** - E2E 测试
+- **MSW (Mock Service Worker)** - API Mock
+
+---
+
+## 🎯 测试分层
+
+### 组件测试（70%）
+
+**测试范围**:
+```markdown
+- [ ] 单个组件渲染
+- [ ] Props 传递
+- [ ] Events 触发
+- [ ] 用户交互
+- [ ] 状态变化
+```
+
+**特点**:
+```
+✅ 快速执行 (<100ms)
+✅ Mount 单个组件
+✅ 高覆盖率 (80%+)
+✅ 独立执行
+```
+
+---
+
+### 集成测试（20%）
+
+**测试范围**:
+```markdown
+- [ ] 组件间交互
+- [ ] Pinia store 集成
+- [ ] Router 集成
+- [ ] API 调用
+```
+
+**特点**:
+```
+✅ Mount 多个组件
+✅ 使用真实 store
+✅ Mock API
+✅ 中等速度 (<1s)
+```
+
+---
+
+### E2E 测试（10%）
+
+**测试范围**:
+```markdown
+- [ ] 关键用户流程
+- [ ] 完整业务流程
+- [ ] 跨浏览器测试
+```
+
+**特点**:
+```
+✅ 真实浏览器
+✅ 慢速执行 (<10s)
+✅ 关键路径覆盖
+✅ 高维护成本
+```
+
+---
+
+## 📏 组件测试
+
+### Vitest 配置
+
+**vite.config.ts**:
+```typescript
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+
+export default defineConfig({
+  plugins: [vue()],
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      threshold: {
+        lines: 80,
+        functions: 80,
+        branches: 70,
+        statements: 80
+      }
+    }
+  }
+})
+```
+
+---
+
+### 组件渲染测试
+
+**基础测试**:
+```typescript
+import { mount } from '@vue/test-utils'
+import { describe, it, expect } from 'vitest'
+import UserCard from '@/components/UserCard.vue'
+
+describe('UserCard', () => {
+  it('renders component with props', () => {
+    const wrapper = mount(UserCard, {
+      props: {
+        name: 'John Doe',
+        email: 'john@example.com'
+      }
+    })
+    
+    expect(wrapper.text()).toContain('John Doe')
+    expect(wrapper.text()).toContain('john@example.com')
+  })
+  
+  it('renders default slot content', () => {
+    const wrapper = mount(UserCard, {
+      slots: {
+        default: '<p>Custom content</p>'
+      }
+    })
+    
+    expect(wrapper.text()).toContain('Custom content')
+  })
+})
+```
+
+---
+
+### Props 测试
+
+**Props 验证**:
+```typescript
+describe('UserCard Props', () => {
+  it('accepts valid props', () => {
+    const wrapper = mount(UserCard, {
+      props: {
+        name: 'John',
+        email: 'john@example.com',
+        isActive: true
+      }
+    })
+    
+    expect(wrapper.props().name).toBe('John')
+    expect(wrapper.props().email).toBe('john@example.com')
+  })
+  
+  it('uses default props', () => {
+    const wrapper = mount(UserCard, {
+      props: {
+        name: 'John'
+      }
+    })
+    
+    expect(wrapper.props().isActive).toBe(false) // 默认值
+  })
+  
+  it('validates required props', () => {
+    expect(() => {
+      mount(UserCard) // 缺少必需 props
+    }).toThrow()
+  })
+})
+```
+
+---
+
+### Events 测试
+
+**事件触发**:
+```typescript
+describe('UserCard Events', () => {
+  it('emits click event', async () => {
+    const wrapper = mount(UserCard, {
+      props: {
+        name: 'John'
+      }
+    })
+    
+    await wrapper.trigger('click')
+    
+    expect(wrapper.emitted('click')).toBeTruthy()
+    expect(wrapper.emitted('click')).toHaveLength(1)
+  })
+  
+  it('emits delete event with payload', async () => {
+    const wrapper = mount(UserCard, {
+      props: {
+        id: 1,
+        name: 'John'
+      }
+    })
+    
+    await wrapper.find('.delete-btn').trigger('click')
+    
+    expect(wrapper.emitted('delete')).toBeTruthy()
+    expect(wrapper.emitted('delete')[0]).toEqual([1])
+  })
+  
+  it('emits update event on input', async () => {
+    const wrapper = mount(UserCard, {
+      props: {
+        name: 'John'
+      }
+    })
+    
+    const input = wrapper.find('input')
+    await input.setValue('Jane')
+    
+    expect(wrapper.emitted('update:name')).toBeTruthy()
+    expect(wrapper.emitted('update:name')[0]).toEqual(['Jane'])
+  })
+})
+```
+
+---
+
+### 用户交互测试
+
+**模拟用户操作**:
+```typescript
+describe('UserCard Interactions', () => {
+  it('toggles active state on button click', async () => {
+    const wrapper = mount(UserCard, {
+      props: {
+        id: 1,
+        name: 'John',
+        isActive: false
+      }
+    })
+    
+    // 初始状态
+    expect(wrapper.classes()).not.toContain('active')
+    
+    // 点击切换
+    await wrapper.find('.toggle-btn').trigger('click')
+    
+    // 验证状态变化
+    expect(wrapper.classes()).toContain('active')
+    expect(wrapper.emitted('toggle')).toBeTruthy()
+  })
+  
+  it('submits form on submit', async () => {
+    const wrapper = mount(UserForm, {
+      props: {
+        initialData: {
+          name: 'John',
+          email: 'john@example.com'
+        }
+      }
+    })
+    
+    // 填写表单
+    await wrapper.find('input[name="name"]').setValue('Jane')
+    await wrapper.find('input[name="email"]').setValue('jane@example.com')
+    
+    // 提交表单
+    await wrapper.find('form').trigger('submit.prevent')
+    
+    // 验证提交
+    expect(wrapper.emitted('submit')).toBeTruthy()
+    expect(wrapper.emitted('submit')[0][0]).toEqual({
+      name: 'Jane',
+      email: 'jane@example.com'
+    })
+  })
+})
+```
+
+---
+
+### Pinia Store 测试
+
+**Mock Store**:
+```typescript
+import { createPinia, setActivePinia } from 'pinia'
+import { useUserStore } from '@/stores/user'
+
+describe('UserCard with Pinia', () => {
+  let pinia: ReturnType<typeof createPinia>
+  
+  beforeEach(() => {
+    pinia = createPinia()
+    setActivePinia(pinia)
+  })
+  
+  it('uses user store', async () => {
+    const userStore = useUserStore()
+    userStore.currentUser = { id: 1, name: 'John' }
+    
+    const wrapper = mount(UserCard, {
+      global: {
+        plugins: [pinia]
+      }
+    })
+    
+    expect(wrapper.text()).toContain('John')
+  })
+  
+  it('dispatches store actions', async () => {
+    const wrapper = mount(UserCard, {
+      global: {
+        plugins: [pinia]
+      },
+      props: {
+        id: 1
+      }
+    })
+    
+    const userStore = useUserStore()
+    userStore.deleteUser = vi.fn()
+    
+    await wrapper.find('.delete-btn').trigger('click')
+    
+    expect(userStore.deleteUser).toHaveBeenCalledWith(1)
+  })
+})
+```
+
+---
+
+### Router 测试
+
+**Mock Router**:
+```typescript
+import { createRouter, createWebHistory } from 'vue-router'
+import { routes } from '@/router'
+
+describe('UserCard with Router', () => {
+  const router = createRouter({
+    history: createWebHistory(),
+    routes
+  })
+  
+  it('navigates on click', async () => {
+    const wrapper = mount(UserCard, {
+      global: {
+        plugins: [router]
+      },
+      props: {
+        id: 1
+      }
+    })
+    
+    await router.push('/')
+    await wrapper.find('.view-profile').trigger('click')
+    
+    expect(router.currentRoute.value.path).toBe('/users/1')
+  })
+})
+```
+
+---
+
+## 📏 集成测试
+
+### 多组件测试
+
+**测试组件交互**:
+```typescript
+describe('UserList Integration', () => {
+  it('renders multiple UserCard components', () => {
+    const users = [
+      { id: 1, name: 'John' },
+      { id: 2, name: 'Jane' }
+    ]
+    
+    const wrapper = mount(UserList, {
+      props: {
+        users
+      }
+    })
+    
+    expect(wrapper.findAllComponents(UserCard)).toHaveLength(2)
+  })
+  
+  it('emits event when child component emits', async () => {
+    const wrapper = mount(UserList, {
+      props: {
+        users: [{ id: 1, name: 'John' }]
+      }
+    })
+    
+    const userCard = wrapper.findComponent(UserCard)
+    await userCard.vm.$emit('delete', 1)
+    
+    expect(wrapper.emitted('user-deleted')).toBeTruthy()
+  })
+})
+```
+
+---
+
+### API Mock
+
+**MSW Mock**:
+```typescript
+import { setupServer } from 'msw/node'
+import { rest } from 'msw'
+
+const server = setupServer(
+  rest.get('/api/v1/users/:id', (req, res, ctx) => {
+    return res(
+      ctx.json({
+        id: req.params.id,
+        name: 'John Doe',
+        email: 'john@example.com'
+      })
+    )
+  })
+)
+
+beforeAll(() => server.listen())
+afterEach(() => server.resetHandlers())
+afterAll(() => server.close())
+
+describe('UserCard with API', () => {
+  it('fetches user data on mount', async () => {
+    const wrapper = mount(UserCard, {
+      props: {
+        id: 1
+      }
+    })
+    
+    // 等待数据加载
+    await wrapper.vm.$nextTick()
+    await waitFor(() => {
+      expect(wrapper.text()).toContain('John Doe')
+    })
+  })
+})
+```
+
+---
+
+## 📏 E2E 测试
+
+### Playwright 配置
+
+**playwright.config.ts**:
+```typescript
+import { defineConfig, devices } from '@playwright/test'
+
+export default defineConfig({
+  testDir: './e2e',
+  timeout: 30 * 1000,
+  use: {
+    baseURL: 'http://localhost:5173',
+    trace: 'on-first-retry',
+  },
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+    },
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
+    },
+  ],
+})
+```
+
+---
+
+### Page Object 模式
+
+**Page 类**:
+```typescript
+// e2e/pages/LoginPage.ts
+import { Page, Locator } from '@playwright/test'
+
+export class LoginPage {
+  readonly page: Page
+  readonly emailInput: Locator
+  readonly passwordInput: Locator
+  readonly loginButton: Locator
+
+  constructor(page: Page) {
+    this.page = page
+    this.emailInput = page.locator('#email')
+    this.passwordInput = page.locator('#password')
+    this.loginButton = page.locator('#login')
+  }
+
+  async goto() {
+    await this.page.goto('/login')
+  }
+
+  async login(email: string, password: string) {
+    await this.emailInput.fill(email)
+    await this.passwordInput.fill(password)
+    await this.loginButton.click()
+  }
+}
+```
+
+**使用 Page Object**:
+```typescript
+// e2e/tests/login.spec.ts
+import { test, expect } from '@playwright/test'
+import { LoginPage } from '../pages/LoginPage'
+import { DashboardPage } from '../pages/DashboardPage'
+
+test('user can login', async ({ page }) => {
+  const loginPage = new LoginPage(page)
+  const dashboardPage = new DashboardPage(page)
+  
+  await loginPage.goto()
+  await loginPage.login('admin@example.com', 'admin123')
+  
+  await expect(dashboardPage.welcome).toBeVisible()
+  await expect(page).toHaveURL('/dashboard')
+})
+```
+
+---
+
+## 📊 测试覆盖率
+
+### 覆盖率配置
+
+**vite.config.ts**:
+```typescript
+export default defineConfig({
+  test: {
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: [
+        'node_modules/',
+        'src/test/',
+        '**/*.d.ts',
+        '**/*.config.*'
+      ],
+      threshold: {
+        lines: 80,
+        functions: 80,
+        branches: 70,
+        statements: 80
+      }
+    }
+  }
+})
+```
+
+---
+
+### 覆盖率目标
+
+**最低要求**:
+```markdown
+### 组件测试
+- 行覆盖率：>80%
+- 函数覆盖率：>80%
+- 分支覆盖率：>70%
+
+### E2E 测试
+- 关键路径：100%
+- 主要功能：>90%
+```
+
+---
+
+## 🔧 测试工具
+
+### 测试辅助函数
+
+**辅助函数**:
+```typescript
+// src/test/helpers.ts
+import { mount, VueWrapper } from '@vue/test-utils'
+import { createPinia } from 'pinia'
+import { createRouter, createWebHistory } from 'vue-router'
+
+export function mountWithPlugins(component: any, options: any = {}) {
+  const pinia = createPinia()
+  const router = createRouter({
+    history: createWebHistory(),
+    routes: []
+  })
+  
+  return mount(component, {
+    global: {
+      plugins: [pinia, router],
+      ...options.global
+    },
+    ...options
+  })
+}
+
+export function createMockUser(overrides: any = {}) {
+  return {
+    id: 1,
+    email: 'test@example.com',
+    name: 'Test User',
+    ...overrides
+  }
+}
+```
+
+---
+
+### 自定义 Matchers
+
+**Vitest Matchers**:
+```typescript
+// src/test/setup.ts
+import { expect } from 'vitest'
+
+expect.extend({
+  toBeVisible(wrapper: VueWrapper) {
+    const isVisible = wrapper.element.isVisible()
+    return {
+      pass: isVisible,
+      message: () => `expected wrapper ${isVisible ? 'not ' : ''}to be visible`
+    }
+  },
+  
+  toHaveEmitted(wrapper: VueWrapper, event: string) {
+    const emitted = wrapper.emitted(event)
+    return {
+      pass: !!emitted,
+      message: () => `expected wrapper ${emitted ? 'not ' : ''}to have emitted ${event}`
+    }
+  }
+})
+```
+
+---
+
+## 📋 测试检查清单
+
+### 组件测试
+
+- [ ] Props 传递正确
+- [ ] Events 触发正确
+- [ ] 用户交互正常
+- [ ] 状态变化正确
+- [ ] Slot 渲染正确
+- [ ] 样式类正确
+
+### 集成测试
+
+- [ ] 组件间交互正常
+- [ ] Pinia store 集成正常
+- [ ] Router 集成正常
+- [ ] API Mock 正确
+- [ ] 数据流正确
+
+### E2E 测试
+
+- [ ] 关键用户流程通过
+- [ ] 跨浏览器测试通过
+- [ ] 响应式设计正常
+- [ ] 可访问性正常
+- [ ] 性能正常
+
+### 测试质量
+
+- [ ] 测试快速执行
+- [ ] 测试独立
+- [ ] 测试可重复
+- [ ] 清晰的错误消息
+- [ ] 覆盖率达标
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[Vue Test Utils Documentation](https://test-utils.vuejs.org/)** - Vue Test Utils 官方文档
+- **[Vitest Documentation](https://vitest.dev/)** - Vitest 测试框架
+- **[Testing Library](https://testing-library.com/docs/vue-testing-library/intro/)** - Testing Library
+
+### 学习资源
+
+- **[Vue Testing Handbook](https://lmiller1991.github.io/vue-testing-handbook/)** - Vue 测试手册
+- **[Vitest Examples](https://github.com/vitest-dev/vitest/tree/main/examples)** - Vitest 示例
+- **[Playwright Documentation](https://playwright.dev/)** - Playwright 官方文档
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，基于 Google/Microsoft 最佳实践 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🟡 中（核心技能）

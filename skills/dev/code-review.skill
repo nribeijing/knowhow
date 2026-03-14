@@ -1,0 +1,624 @@
+# Skill: 代码审查
+
+> 基于 Google、Microsoft、GitHub 等最佳实践的代码审查技能
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🔴 高（核心技能）
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[Google Engineering Practices](https://google.github.io/eng-practices/)** - Google 工程实践
+- **[Microsoft Engineering Guidelines](https://github.com/microsoft/eng-guidelines)** - Microsoft 工程指南
+- **[GitHub Pull Request Best Practices](https://docs.github.com/en/pull-requests)** - GitHub PR 最佳实践
+- **[Atlassian Code Review Guide](https://www.atlassian.com/blog/git/written-unwritten-guide-code-reviews)** - Atlassian 代码审查指南
+- **[OWASP Code Review Guide](https://owasp.org/www-project-code-review-guide/)** - OWASP 安全审查指南
+
+### 行业最佳实践
+
+- **Stack Overflow Developer Survey** - 开发者调查
+- **Phabricator Code Review** - Facebook 代码审查实践
+- **Amazon Code Review Guidelines** - Amazon 代码审查指南
+
+---
+
+## 🎯 核心原则
+
+### 1. 对事不对人 (Focus on Code, Not People)
+
+> "审查的是代码，不是作者。"
+> — Google Engineering Practices
+
+**实践**:
+- ✅ 关注代码质量，不关注作者
+- ✅ 使用客观语言，避免主观评价
+- ✅ 避免人身攻击和情绪化语言
+- ✅ 保持专业态度和尊重
+
+**语言示例**:
+```
+❌ "这代码写得太烂了"
+✅ "这段代码的逻辑我没太理解，能解释一下吗？"
+
+❌ "你为什么要这样写？"
+✅ "我注意到这里用了 X 方法，考虑过 Y 方法吗？"
+
+❌ "必须改成这样"
+✅ "建议考虑这种写法，原因是..."
+```
+
+### 2. 建设性反馈 (Constructive Feedback)
+
+> "不仅指出问题，更要提供解决方案。"
+> — Microsoft Engineering Guidelines
+
+**实践**:
+- ✅ 指出问题的同时提供解决方案
+- ✅ 使用积极的语言
+- ✅ 分享最佳实践
+- ✅ 鼓励学习和改进
+
+**反馈结构**:
+```
+1. 问题描述（清晰具体）
+2. 影响说明（为什么重要）
+3. 解决方案（如何改进）
+4. 参考资源（学习资料）
+```
+
+### 3. 及时反馈 (Timely Response)
+
+> "24 小时内响应是基本要求。"
+> — GitHub Best Practices
+
+**实践**:
+- ✅ 24 小时内响应
+- ✅ 优先处理代码审查
+- ✅ 设置专门的审查时间
+- ✅ 如需更多时间，提前告知
+
+### 4. 持续学习 (Continuous Learning)
+
+> "代码审查是双向学习的过程。"
+> — Atlassian Code Review Guide
+
+**实践**:
+- ✅ 从审查中学习
+- ✅ 分享最佳实践
+- ✅ 接受他人建议
+- ✅ 共同进步
+
+---
+
+## 📏 审查流程
+
+### 步骤 1: 审查准备
+
+#### 1.1 理解 PR 目标
+
+```markdown
+检查项:
+- [ ] PR 标题清晰
+- [ ] PR 描述完整
+- [ ] 相关 Issue 链接
+- [ ] 变更范围明确
+```
+
+**示例**:
+```markdown
+## PR 描述模板
+
+### 变更类型
+- [x] Bug 修复
+- [ ] 新功能
+- [ ] 重构
+
+### 变更描述
+修复用户登录时 Token 验证失败的问题
+
+### 相关 Issue
+Fixes #123
+
+### 测试计划
+- [x] 单元测试
+- [x] 集成测试
+```
+
+#### 1.2 查看相关背景
+
+```markdown
+检查项:
+- [ ] 查看关联 Issue
+- [ ] 了解业务背景
+- [ ] 查看设计文档
+- [ ] 了解技术决策
+```
+
+#### 1.3 准备审查环境
+
+```markdown
+检查项:
+- [ ] 拉取最新代码
+- [ ] 本地运行测试
+- [ ] 准备测试数据
+- [ ] 准备审查工具
+```
+
+---
+
+### 步骤 2: 代码审查
+
+#### 2.1 代码正确性
+
+**检查项**:
+```markdown
+- [ ] 代码逻辑正确
+- [ ] 边界条件处理
+- [ ] 错误处理完善
+- [ ] 无明显的 Bug
+- [ ] 符合业务逻辑
+```
+
+**审查要点**:
+```python
+# ✅ 正确示例
+def get_user_by_id(user_id: UUID) -> Optional[User]:
+    """根据 ID 获取用户"""
+    if not user_id:
+        raise ValueError("用户 ID 不能为空")
+    
+    result = await db.execute(select(User).where(User.id == user_id))
+    return result.scalar_one_or_none()
+
+# ❌ 错误示例
+def get_user(user_id):
+    # 缺少类型注解
+    # 缺少参数验证
+    # 缺少文档字符串
+    result = await db.execute(f"SELECT * FROM users WHERE id = '{user_id}'")
+    # SQL 注入风险
+    return result.fetchone()
+```
+
+#### 2.2 代码可读性
+
+**检查项**:
+```markdown
+- [ ] 命名清晰有意义
+- [ ] 函数简洁 (<50 行)
+- [ ] 代码结构合理
+- [ ] 注释适当
+- [ ] 遵循编码规范
+```
+
+**审查要点**:
+```python
+# ✅ 好的命名
+def calculate_monthly_revenue() -> Decimal:
+    """计算月度收入"""
+    ...
+
+def is_user_eligible_for_discount(user: User) -> bool:
+    """检查用户是否符合折扣条件"""
+    ...
+
+# ❌ 差的命名
+def calc() -> float:
+    # 做什么的？
+    ...
+
+def check(u) -> bool:
+    # 检查什么？u 是什么？
+    ...
+```
+
+#### 2.3 测试覆盖
+
+**检查项**:
+```markdown
+- [ ] 包含单元测试
+- [ ] 测试覆盖率高
+- [ ] 测试用例完整
+- [ ] 所有测试通过
+- [ ] 包含边界测试
+```
+
+**审查要点**:
+```python
+# ✅ 完整的测试
+def test_get_user_by_id():
+    """测试根据 ID 获取用户"""
+    # 正常情况
+    user = await get_user_by_id(valid_user_id)
+    assert user is not None
+    assert user.id == valid_user_id
+    
+    # 边界情况：用户不存在
+    user = await get_user_by_id(invalid_user_id)
+    assert user is None
+    
+    # 异常情况：ID 为空
+    with pytest.raises(ValueError):
+        await get_user_by_id(None)
+
+# ❌ 不完整的测试
+def test_get_user():
+    # 只测试了正常情况
+    user = await get_user_by_id(1)
+    assert user is not None
+```
+
+#### 2.4 性能影响
+
+**检查项**:
+```markdown
+- [ ] 无明显性能问题
+- [ ] 算法复杂度合理
+- [ ] 资源使用合理
+- [ ] 无内存泄漏
+- [ ] 数据库查询优化
+```
+
+**审查要点**:
+```python
+# ✅ 性能优化
+async def get_active_users():
+    """获取活跃用户列表"""
+    # 使用索引
+    result = await db.execute(
+        select(User)
+        .where(User.is_active == True)
+        .options(selectinload(User.role))
+    )
+    return result.scalars().all()
+
+# ❌ 性能问题
+async def get_active_users():
+    # N+1 查询问题
+    users = await db.execute(select(User))
+    result = []
+    for user in users.scalars():
+        if user.is_active:
+            # 每次循环都查询数据库
+            role = await db.get(Role, user.role_id)
+            result.append(user)
+    return result
+```
+
+#### 2.5 安全性
+
+**检查项**:
+```markdown
+- [ ] 输入验证完善
+- [ ] 无安全漏洞
+- [ ] 敏感数据处理
+- [ ] 权限检查
+- [ ] 无 SQL 注入风险
+```
+
+**审查要点**:
+```python
+# ✅ 安全示例
+async def create_user(email: str, password: str):
+    """创建用户"""
+    # 输入验证
+    if not is_valid_email(email):
+        raise ValueError("邮箱格式不正确")
+    
+    # 密码强度验证
+    if len(password) < 8:
+        raise ValueError("密码至少 8 位")
+    
+    # 参数化查询（防 SQL 注入）
+    hashed_password = get_password_hash(password)
+    user = User(email=email, hashed_password=hashed_password)
+    await db.add(user)
+    await db.commit()
+
+# ❌ 安全问题
+async def create_user(email, password):
+    # 无输入验证
+    # 无密码强度要求
+    # 字符串拼接（SQL 注入风险）
+    query = f"INSERT INTO users (email, password) VALUES ('{email}', '{password}')"
+    await db.execute(query)
+```
+
+---
+
+### 步骤 3: 反馈提供
+
+#### 3.1 使用标准格式
+
+**反馈模板**:
+```markdown
+## 代码审查反馈
+
+### ✅ 做得好的
+- 代码结构清晰
+- 测试覆盖完整
+- 文档更新及时
+
+### 🔴 必须修改
+**文件**: `app/api/users.py:50`
+
+**问题**: 
+缺少输入验证，可能导致 SQL 注入
+
+**建议**: 
+```python
+# 添加输入验证
+if not user_id or not isinstance(user_id, str):
+    raise ValueError("Invalid user_id")
+```
+
+**理由**: 
+安全是第一位的，必须验证所有用户输入
+
+### 🟡 建议改进
+**文件**: `app/api/users.py:120`
+
+**问题**: 
+函数 `processData` 超过 100 行，难以理解
+
+**建议**: 
+拆分成多个小函数：
+- `filterData()`
+- `transformData()`
+- `validateData()`
+
+**理由**: 
+提高代码可读性和可维护性
+
+### ❓ 疑问
+**文件**: `app/api/users.py:80`
+
+**问题**: 
+这里为什么选择 X 方法而不是 Y 方法？
+
+**说明**: 
+想了解这里的考虑，以便学习
+```
+
+#### 3.2 分类反馈
+
+**反馈分类**:
+```markdown
+🔴 必须修改 (Blocking)
+- 代码错误
+- 安全问题
+- 严重性能问题
+- 功能缺失
+
+🟡 建议改进 (Non-blocking)
+- 代码风格
+- 可读性改进
+- 最佳实践
+- 优化建议
+
+❓ 疑问 (Question)
+- 需要澄清
+- 理解意图
+- 学习讨论
+```
+
+#### 3.3 提供解决方案
+
+**反馈示例**:
+```markdown
+# ✅ 好的反馈
+**问题**: 这里缺少错误处理
+
+**建议**: 添加 try-except 块
+```python
+try:
+    result = await risky_operation()
+except SpecificError as e:
+    logger.error(f"操作失败：{e}")
+    raise HTTPException(status_code=500, detail="操作失败")
+```
+
+# ❌ 差的反馈
+这里要处理错误
+```
+
+#### 3.4 使用建设性语言
+
+**语言对比**:
+```markdown
+# ✅ 建设性语言
+- "建议考虑..."
+- "这里可以改进..."
+- "我注意到..."
+- "能解释一下...吗？"
+- "考虑过...方法吗？"
+
+# ❌ 避免的语言
+- "这代码太烂了"
+- "必须改成..."
+- "你为什么..."
+- "这明显错了"
+- "太蠢了"
+```
+
+---
+
+### 步骤 4: 跟进确认
+
+#### 4.1 确认修改
+
+```markdown
+检查项:
+- [ ] 所有必须修改已处理
+- [ ] 建议改进已考虑
+- [ ] 疑问已澄清
+- [ ] 测试已更新
+```
+
+#### 4.2 重新审查
+
+```markdown
+检查项:
+- [ ] 修改正确
+- [ ] 无新问题
+- [ ] 测试通过
+- [ ] 文档更新
+```
+
+#### 4.3 最终批准
+
+```markdown
+批准用语:
+- "LGTM! (Looks Good To Me)"
+- "代码质量很好，批准"
+- "所有问题已解决，批准合并"
+```
+
+---
+
+## 📋 检查清单
+
+### 审查前
+
+- [ ] 理解 PR 目标和范围
+- [ ] 查看相关 Issue 和文档
+- [ ] 拉取最新代码
+- [ ] 本地运行测试
+- [ ] 准备审查环境
+
+### 审查中
+
+- [ ] 代码正确性
+- [ ] 代码可读性
+- [ ] 测试覆盖
+- [ ] 性能影响
+- [ ] 安全性
+- [ ] 文档完整性
+
+### 审查后
+
+- [ ] 提供清晰的反馈
+- [ ] 分类反馈（必须/建议/疑问）
+- [ ] 提供解决方案
+- [ ] 及时跟进修改
+- [ ] 最终确认批准
+
+---
+
+## 🔧 工具辅助
+
+### 自动化工具
+
+**Linters**:
+```bash
+# Python
+pylint app/
+flake8 app/
+black --check app/
+
+# JavaScript/TypeScript
+eslint src/
+prettier --check src/
+```
+
+**Security Scanners**:
+```bash
+# Python
+bandit -r app/
+
+# JavaScript
+npm audit
+snyk test
+```
+
+**CI/CD**:
+```yaml
+# GitHub Actions
+name: Code Review
+on: [pull_request]
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run Linters
+        run: |
+          pylint app/
+          black --check app/
+      - name: Run Tests
+        run: pytest
+```
+
+### 审查平台
+
+- **GitHub Pull Requests**
+- **GitLab Merge Requests**
+- **Bitbucket Pull Requests**
+- **Phabricator**
+- **Gerrit**
+
+---
+
+## 📊 效果对比
+
+### ❌ 低效审查
+
+```
+审查者："这代码有问题，改一下"
+作者："哪里有问题？"
+审查者："自己看"
+作者："..."
+（来回沟通 10+ 轮）
+```
+
+### ✅ 高效审查
+
+```
+审查者：
+"代码整体很好，有 3 个小建议：
+1. 第 50 行缺少输入验证（必须修改）
+   建议添加：if not user_id: raise ValueError(...)
+2. 第 120 行函数太长（建议改进）
+   建议拆分成 3 个小函数
+3. 第 80 行为什么用 X 方法？（疑问）
+   想了解这里的考虑"
+
+作者："收到，马上修改！"
+（1 轮沟通完成）
+```
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[Google Engineering Practices](https://google.github.io/eng-practices/)** - Google 工程实践
+- **[Microsoft Engineering Guidelines](https://github.com/microsoft/eng-guidelines)** - Microsoft 工程指南
+- **[GitHub Pull Request Best Practices](https://docs.github.com/en/pull-requests)** - GitHub PR 最佳实践
+- **[Atlassian Code Review Guide](https://www.atlassian.com/blog/git/written-unwritten-guide-code-reviews)** - Atlassian 代码审查指南
+- **[OWASP Code Review Guide](https://owasp.org/www-project-code-review-guide/)** - OWASP 安全审查指南
+
+### 学习资源
+
+- **[Code Review Best Practices](https://www.atlassian.com/blog/git/written-unwritten-guide-code-reviews)** - Atlassian 博客
+- **[How to Make Your Code Reviewer Fall in Love with You](https://mtlynch.io/code-review-love/)** - Michael Lynch
+- **[The Best Way to Do Code Reviews](https://www.gitkraken.com/learn/git/code-review)** - GitKraken
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，基于 Google/Microsoft/GitHub 最佳实践 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🔴 高（核心技能）

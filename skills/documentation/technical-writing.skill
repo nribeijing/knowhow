@@ -1,0 +1,581 @@
+# Skill: 技术文档写作
+
+> 基于 Google、Microsoft 最佳实践的技术文档写作技能
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🟡 中（核心技能）
+
+---
+
+## 📋 前置技能
+
+- ✅ [code-best-practices.skill](../best-practices/code-best-practices.skill) - 代码最佳实践
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[Google Developer Documentation Style Guide](https://developers.google.com/style)** - Google 开发者文档风格指南
+- **[Microsoft Writing Style Guide](https://learn.microsoft.com/en-us/style-guide/)** - Microsoft 写作风格指南
+- **[Documentation as Code](https://documentation-as-code.github.io/)** - 文档即代码
+- **[Diátaxis](https://diataxis.fr/)** - 技术文档框架
+
+### 行业最佳实践
+
+- **Docs as Code** - 文档即代码
+- **Single Source of Truth** - 单一数据源
+- **Progressive Disclosure** - 渐进式披露
+- **Task-Oriented Documentation** - 任务导向文档
+
+---
+
+## 📚 文档类型
+
+### 按用途分类
+
+```markdown
+### 教程 (Tutorials)
+- 学习目标导向
+- 逐步指导
+- 适合初学者
+- 示例：快速开始、入门教程
+
+### 操作指南 (How-to Guides)
+- 解决问题导向
+- 步骤清晰
+- 适合有基础用户
+- 示例：如何配置、如何部署
+
+### 参考文档 (Reference)
+- 信息导向
+- 完整准确
+- 适合查阅
+- 示例：API 文档、配置项
+
+### 解释文档 (Explanation)
+- 理解导向
+- 背景知识
+- 适合深入学习
+- 示例：架构设计、概念说明
+```
+
+### 按技术分类
+
+```markdown
+### API 文档
+- 端点说明
+- 请求/响应格式
+- 错误码说明
+- 使用示例
+
+### 设计文档
+- 架构设计
+- 技术方案
+- 决策记录（ADR）
+- 接口设计
+
+### 运维文档
+- 部署指南
+- 运维手册（Runbook）
+- 故障排查指南
+- 监控告警配置
+
+### 用户文档
+- 用户手册
+- 功能说明
+- 最佳实践
+- 常见问题
+```
+
+---
+
+## 📝 API 文档写作
+
+### OpenAPI 规范
+
+```yaml
+openapi: 3.0.0
+info:
+  title: User API
+  version: 1.0.0
+  description: |
+    用户管理 API，提供用户 CRUD 操作。
+    
+    ## 认证方式
+    使用 JWT Token 认证，在 Header 中添加：
+    ```
+    Authorization: Bearer <token>
+    ```
+    
+    ## 错误处理
+    所有错误返回统一格式：
+    ```json
+    {
+      "error": {
+        "code": "error_code",
+        "message": "错误消息"
+      }
+    }
+    ```
+
+paths:
+  /users:
+    get:
+      summary: 获取用户列表
+      description: |
+        分页获取用户列表。
+        
+        ## 使用场景
+        - 后台管理系统用户列表
+        - 用户搜索功能
+        
+        ## 权限要求
+        需要 `admin` 角色权限。
+      
+      parameters:
+        - name: page
+          in: query
+          description: 页码，从 1 开始
+          schema:
+            type: integer
+            default: 1
+            example: 1
+        
+        - name: page_size
+          in: query
+          description: 每页数量，最大 100
+          schema:
+            type: integer
+            default: 10
+            maximum: 100
+            example: 20
+      
+      responses:
+        '200':
+          description: 成功返回用户列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    description: 用户列表
+                    items:
+                      $ref: '#/components/schemas/User'
+                  total:
+                    type: integer
+                    description: 总数量
+                    example: 100
+              
+              example:
+                users:
+                  - id: "uuid-123"
+                    email: "user@example.com"
+                    name: "张三"
+                total: 100
+        
+        '401':
+          description: 未认证
+          content:
+            application/json:
+              example:
+                error:
+                  code: "unauthorized"
+                  message: "未认证，请先登录"
+        
+        '403':
+          description: 无权限
+          content:
+            application/json:
+              example:
+                error:
+                  code: "forbidden"
+                  message: "权限不足，需要 admin 角色"
+```
+
+### 代码示例
+
+```python
+"""
+好的代码示例应该：
+1. 完整可运行
+2. 包含错误处理
+3. 有清晰注释
+4. 展示最佳实践
+"""
+
+# ✅ 好的示例
+from app.api.client import ApiClient
+
+# 初始化客户端
+client = ApiClient(base_url="https://api.example.com")
+
+# 设置认证
+client.set_token("your-token-here")
+
+# 获取用户列表
+try:
+    users = client.get_users(page=1, page_size=10)
+    for user in users:
+        print(f"{user.name} ({user.email})")
+except ApiError as e:
+    print(f"API 调用失败：{e.message}")
+
+# ❌ 坏的示例
+import requests
+r = requests.get("http://api.example.com/users")
+print(r.json())
+```
+
+---
+
+## 🏗️ 设计文档写作
+
+### 架构设计文档模板
+
+```markdown
+# 系统架构设计
+
+## 1. 概述
+
+### 1.1 背景
+（为什么要做这个系统）
+
+### 1.2 目标
+（系统要达成什么目标）
+
+### 1.3 范围
+（系统包含什么，不包含什么）
+
+### 1.4 术语定义
+| 术语 | 定义 |
+|------|------|
+| User | 系统用户 |
+| Order | 订单 |
+
+## 2. 架构设计
+
+### 2.1 架构图
+（插入架构图）
+
+### 2.2 技术栈
+- 前端：Vue3 + TypeScript
+- 后端：Python + FastAPI
+- 数据库：PostgreSQL
+- 缓存：Redis
+
+### 2.3 组件说明
+#### 2.3.1 API 网关
+职责：请求路由、认证授权、限流
+
+#### 2.3.2 用户服务
+职责：用户管理、认证授权
+
+## 3. 数据设计
+
+### 3.1 数据库设计
+（ER 图）
+
+### 3.2 数据流
+（数据流图）
+
+## 4. 接口设计
+
+### 4.1 内部接口
+### 4.2 外部接口
+
+## 5. 非功能性需求
+
+### 5.1 性能要求
+### 5.2 安全要求
+### 5.3 可用性要求
+
+## 6. 部署架构
+
+### 6.1 部署图
+### 6.2 环境配置
+
+## 7. 风险评估
+
+### 7.1 技术风险
+### 7.2 运维风险
+
+## 8. 参考资料
+```
+
+### ADR（架构决策记录）模板
+
+```markdown
+# ADR-001: 技术栈选择
+
+## 状态
+已接受
+
+## 背景
+我们需要选择新的技术栈来构建 Web 应用。
+
+## 决策
+- 后端：Python + FastAPI
+- 前端：Vue3 + TypeScript
+- 数据库：PostgreSQL
+
+## 替代方案考虑
+
+### 方案 1: Java + Spring Boot
+**优点**:
+- 生态系统完善
+- 性能优秀
+
+**缺点**:
+- 开发效率较低
+- 代码冗长
+
+### 方案 2: Node.js + Express
+**优点**:
+- 前后端统一语言
+- 开发效率高
+
+**缺点**:
+- 类型系统较弱
+- 大型项目维护困难
+
+## 决策理由
+1. 团队熟悉 Python
+2. FastAPI 性能优秀
+3. 开发效率高
+4. 类型系统完善
+
+## 后果
+
+### 正面
+- 开发效率提升
+- 代码质量提高
+- 团队满意度高
+
+### 负面
+- 需要学习 FastAPI
+- 生态系统不如 Java
+
+## 参考
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [Vue.js Documentation](https://vuejs.org/)
+```
+
+---
+
+## 📖 运维文档写作
+
+### Runbook 模板
+
+```markdown
+# 服务运维手册
+
+## 服务信息
+- 服务名称：user-service
+- 负责人：张三
+- 联系方式：zhangsan@example.com
+
+## 部署信息
+- 环境：生产环境
+- 部署方式：Kubernetes
+- 副本数：3
+
+## 监控指标
+- CPU 使用率：< 70%
+- 内存使用率：< 80%
+- 请求延迟：P95 < 500ms
+- 错误率：< 0.1%
+
+## 告警配置
+| 指标 | 阈值 | 通知方式 |
+|------|------|---------|
+| CPU | > 80% | 邮件 + 短信 |
+| 内存 | > 90% | 邮件 + 短信 |
+| 错误率 | > 1% | 邮件 + 短信 |
+
+## 常见故障处理
+
+### 故障 1: 服务响应慢
+**现象**: 请求延迟 > 1s
+
+**排查步骤**:
+1. 检查 CPU/内存使用率
+2. 检查数据库连接数
+3. 检查慢查询日志
+4. 检查外部依赖
+
+**解决方案**:
+1. 扩容副本数
+2. 优化慢查询
+3. 增加缓存
+
+### 故障 2: 服务不可用
+**现象**: 健康检查失败
+
+**排查步骤**:
+1. 检查 Pod 状态
+2. 检查日志
+3. 检查依赖服务
+
+**解决方案**:
+1. 重启 Pod
+2. 回滚版本
+3. 修复依赖
+
+## 备份恢复
+
+### 备份策略
+- 频率：每天凌晨 2 点
+- 保留：7 天
+- 位置：S3
+
+### 恢复步骤
+1. 停止服务
+2. 恢复数据库
+3. 启动服务
+4. 验证功能
+
+## 变更管理
+
+### 发布流程
+1. 测试环境验证
+2. 预发布环境验证
+3. 生产环境发布
+4. 功能验证
+
+### 回滚流程
+1. 停止发布
+2. 回滚到上一版本
+3. 验证功能
+4. 问题排查
+```
+
+---
+
+## ✍️ 文档写作最佳实践
+
+### 写作原则
+
+```markdown
+### 清晰 (Clear)
+- 使用简单语言
+- 避免歧义
+- 句子简短
+
+### 简洁 (Concise)
+- 删除冗余
+- 直接表达
+- 避免废话
+
+### 准确 (Accurate)
+- 信息正确
+- 数据准确
+- 及时更新
+
+### 完整 (Complete)
+- 覆盖所有场景
+- 包含示例
+- 提供参考资料
+```
+
+### 格式规范
+
+```markdown
+### 标题层级
+# 一级标题
+## 二级标题
+### 三级标题
+
+### 代码块
+```python
+# 使用语言标识
+def hello():
+    print("Hello")
+```
+
+### 列表
+- 无序列表
+- 项目符号
+
+1. 有序列表
+2. 步骤说明
+
+### 强调
+**粗体**：强调重点
+*斜体*：术语、变量
+
+### 链接
+[文本](URL)
+```
+
+---
+
+## 📋 文档检查清单
+
+### 内容质量
+
+- [ ] 信息准确
+- [ ] 逻辑清晰
+- [ ] 示例完整
+- [ ] 术语一致
+
+### 格式规范
+
+- [ ] 标题层级正确
+- [ ] 代码块标识
+- [ ] 列表格式
+- [ ] 链接有效
+
+### 可读性
+
+- [ ] 语言简洁
+- [ ] 句子简短
+- [ ] 段落分明
+- [ ] 图表辅助
+
+### 维护性
+
+- [ ] 版本标注
+- [ ] 更新日期
+- [ ] 作者信息
+- [ ] 审核记录
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[Google Developer Documentation Style Guide](https://developers.google.com/style)** - Google 开发者文档风格指南
+- **[Microsoft Writing Style Guide](https://learn.microsoft.com/en-us/style-guide/)** - Microsoft 写作风格指南
+- **[Documentation as Code](https://documentation-as-code.github.io/)** - 文档即代码
+- **[Diátaxis](https://diataxis.fr/)** - 技术文档框架
+
+### 学习资源
+
+- **[Write the Docs](https://www.writethedocs.org/)** - 技术文档社区
+- **[Technical Writing One](https://developers.google.com/tech-writing)** - Google 技术写作课程
+
+### 工具
+
+- **[Markdown](https://www.markdownguide.org/)** - Markdown 语法
+- **[Swagger Editor](https://editor.swagger.io/)** - API 文档编辑器
+- **[Draw.io](https://app.diagrams.net/)** - 架构图工具
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，基于 Google/Microsoft 文档最佳实践 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🟡 中（核心技能）

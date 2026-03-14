@@ -1,0 +1,490 @@
+# Skill: 代码重构
+
+> 基于 Martin Fowler、Google 最佳实践的代码重构技能
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🟡 中（核心技能）
+
+---
+
+## 📋 前置技能
+
+- ✅ [code-best-practices.skill](../best-practices/code-best-practices.skill) - 代码最佳实践
+- ✅ [code-review-python.skill](../code-review/code-review-python.skill) - Python 代码审查
+- ✅ [code-review-vue.skill](../code-review/code-review-vue.skill) - Vue 代码审查
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[Martin Fowler - Refactoring](https://martinfowler.com/books/refactoring.html)** - 重构权威指南
+- **[Google Engineering Practices](https://google.github.io/eng-practices/)** - Google 工程实践
+- **[Clean Code](https://www.oreilly.com/library/view/clean-code-a/9780136083238/)** - 代码整洁之道
+- **[Working Effectively with Legacy Code](https://www.oreilly.com/library/view/working-effectively-with/0131177052/)** - 有效处理遗留代码
+
+### 行业最佳实践
+
+- **Refactoring Patterns** - 重构模式
+- **Code Smells** - 代码异味
+- **Test-Driven Refactoring** - 测试驱动重构
+- **Continuous Refactoring** - 持续重构
+
+---
+
+## 🔍 代码异味识别
+
+### 代码异味类型
+
+```markdown
+### 重复代码 (Duplicated Code)
+- 相同的代码块在多处出现
+- 相似的代码结构
+- 复制粘贴的代码
+
+### 长方法 (Long Method)
+- 方法超过 50 行
+- 职责不单一
+- 难以理解
+
+### 大类 (Large Class)
+- 类超过 500 行
+- 职责过多
+- 难以维护
+
+### 过长参数列表 (Long Parameter List)
+- 参数超过 5 个
+- 应该使用数据类
+- 难以调用
+
+### 发散式变化 (Divergent Change)
+- 一个类因不同原因变化
+- 违反单一职责
+- 难以测试
+
+### 霰弹式修改 (Shotgun Surgery)
+- 一个变化需要修改多个类
+- 代码分散
+- 容易遗漏
+
+### 依恋情结 (Feature Envy)
+- 方法过多使用其他类的数据
+- 应该移动方法
+- 耦合过高
+
+### 数据簇 (Data Clumps)
+- 经常一起出现的数据项
+- 应该提取为类
+- 重复传递
+
+### 基本类型偏执 (Primitive Obsession)
+- 过度使用基本类型
+- 缺少值对象
+- 类型不安全
+
+### switch 语句 (Switch Statements)
+- 复杂的 switch/case
+- 应该使用多态
+- 难以扩展
+
+### 并行继承体系 (Parallel Inheritance Hierarchies)
+- 两个继承体系并行
+- 耦合过高
+- 难以维护
+
+### 懒惰类 (Lazy Class)
+- 类职责过少
+- 应该合并
+- 过度设计
+
+### 投机性通用性 (Speculative Generality)
+- 未使用的通用性
+- 过度设计
+- YAGNI 违反
+
+### 临时字段 (Temporary Field)
+- 只在某些情况下使用的字段
+- 含义不清
+- 应该提取类
+
+### 消息链 (Message Chains)
+- 过长的调用链
+- a.getB().getC().getD()
+- 耦合过高
+
+### 中间人 (Middle Man)
+- 类只委托给其他类
+- 应该移除
+- 过度设计
+
+### 内幕交易 (Insider Trading)
+- 类之间过度了解
+- 耦合过高
+- 应该减少可见性
+
+### 过大接口 (Large Interface)
+- 接口方法过多
+- 应该拆分
+- ISP 违反
+
+### 数据类 (Data Class)
+- 只有字段和 getter/setter
+- 缺少行为
+- 应该添加行为
+
+### 被拒绝的继承 (Refused Bequest)
+- 子类不使用父类方法
+- 继承不当
+- 应该使用组合
+
+### 注释 (Comments)
+- 过多注释
+- 注释代替代码
+- 代码不清晰
+```
+
+---
+
+## 🔧 重构模式
+
+### 组成方法 (Extract Method)
+
+```python
+# ❌ 修复前：长方法
+def print_order(order):
+    # 计算总价
+    total = 0
+    for item in order.items:
+        total += item.price * item.quantity
+    
+    # 计算税费
+    tax = total * 0.1
+    
+    # 计算运费
+    shipping = 10 if total < 100 else 0
+    
+    # 打印订单
+    print(f"订单号：{order.id}")
+    print(f"商品数量：{len(order.items)}")
+    print(f"总价：{total}")
+    print(f"税费：{tax}")
+    print(f"运费：{shipping}")
+    print(f"最终价格：{total + tax + shipping}")
+
+# ✅ 修复后：组成方法
+def print_order(order):
+    subtotal = calculate_subtotal(order)
+    tax = calculate_tax(subtotal)
+    shipping = calculate_shipping(subtotal)
+    total = subtotal + tax + shipping
+    
+    print(f"订单号：{order.id}")
+    print(f"商品数量：{len(order.items)}")
+    print(f"总价：{subtotal}")
+    print(f"税费：{tax}")
+    print(f"运费：{shipping}")
+    print(f"最终价格：{total}")
+
+def calculate_subtotal(order):
+    return sum(item.price * item.quantity for item in order.items)
+
+def calculate_tax(subtotal):
+    return subtotal * 0.1
+
+def calculate_shipping(subtotal):
+    return 10 if subtotal < 100 else 0
+```
+
+### 提取类 (Extract Class)
+
+```python
+# ❌ 修复前：大类
+class User:
+    def __init__(self, name, email, phone, address, city, country, zip_code):
+        self.name = name
+        self.email = email
+        self.phone = phone
+        self.address = address
+        self.city = city
+        self.country = country
+        self.zip_code = zip_code
+    
+    def get_full_address(self):
+        return f"{self.address}, {self.city}, {self.country}, {self.zip_code}"
+    
+    def format_phone(self):
+        # 格式化电话号码
+        ...
+
+# ✅ 修复后：提取类
+class Address:
+    def __init__(self, street, city, country, zip_code):
+        self.street = street
+        self.city = city
+        self.country = country
+        self.zip_code = zip_code
+    
+    def get_full_address(self):
+        return f"{self.street}, {self.city}, {self.country}, {self.zip_code}"
+
+class User:
+    def __init__(self, name, email, phone, address: Address):
+        self.name = name
+        self.email = email
+        self.phone = phone
+        self.address = address
+```
+
+### 移动方法 (Move Method)
+
+```python
+# ❌ 修复前：依恋情结
+class Order:
+    def __init__(self, items):
+        self.items = items
+    
+    def get_total(self):
+        return sum(item.price * item.quantity for item in self.items)
+
+class Customer:
+    def __init__(self, orders):
+        self.orders = orders
+    
+    def calculate_order_total(self, order):
+        # 这个方法应该属于 Order
+        return order.get_total()
+
+# ✅ 修复后：移动方法
+class Order:
+    def __init__(self, items):
+        self.items = items
+    
+    def get_total(self):
+        return sum(item.price * item.quantity for item in self.items)
+
+class Customer:
+    def __init__(self, orders):
+        self.orders = orders
+```
+
+### 以多态取代条件表达式 (Replace Conditional with Polymorphism)
+
+```python
+# ❌ 修复前：switch 语句
+class Bird:
+    def __init__(self, type):
+        self.type = type
+    
+    def get_speed(self, wind_speed):
+        if self.type == "EUROPEAN_SWALLOW":
+            return 24 - wind_speed * 0.5
+        elif self.type == "AFRICAN_SWALLOW":
+            return 24 - wind_speed * 0.3
+        elif self.type == "NORWEGIAN_BLUE":
+            return 0  # 死了
+        else:
+            return 0
+
+# ✅ 修复后：多态
+class Bird:
+    def get_speed(self, wind_speed):
+        return 0
+
+class EuropeanSwallow(Bird):
+    def get_speed(self, wind_speed):
+        return 24 - wind_speed * 0.5
+
+class AfricanSwallow(Bird):
+    def get_speed(self, wind_speed):
+        return 24 - wind_speed * 0.3
+
+class NorwegianBlue(Bird):
+    def get_speed(self, wind_speed):
+        return 0  # 死了
+```
+
+### 引入参数对象 (Introduce Parameter Object)
+
+```python
+# ❌ 修复前：过长参数列表
+def create_user(email, name, age, phone, address, city, country, role):
+    ...
+
+# ✅ 修复后：参数对象
+from dataclasses import dataclass
+
+@dataclass
+class UserData:
+    email: str
+    name: str
+    age: int
+    phone: str
+    address: str
+    city: str
+    country: str
+    role: str
+
+def create_user(user_data: UserData):
+    ...
+```
+
+### 保留整个对象 (Preserve Whole Object)
+
+```python
+# ❌ 修复前：临时字段
+def print_address(street, city, country, zip_code):
+    print(f"{street}, {city}, {country}, {zip_code}")
+
+# ✅ 修复后：保留整个对象
+def print_address(address: Address):
+    print(f"{address.street}, {address.city}, {address.country}, {address.zip_code}")
+```
+
+### 以查询取代临时变量 (Replace Temp with Query)
+
+```python
+# ❌ 修复前：临时变量
+def calculate_total():
+    base_price = self.quantity * self.item_price
+    
+    if base_price > 1000:
+        return base_price * 0.95
+    else:
+        return base_price * 0.98
+
+# ✅ 修复后：查询
+def calculate_total():
+    if self.base_price > 1000:
+        return self.base_price * 0.95
+    else:
+        return self.base_price * 0.98
+
+@property
+def base_price(self):
+    return self.quantity * self.item_price
+```
+
+---
+
+## 🧪 重构策略
+
+### 测试驱动重构
+
+```markdown
+### 红 - 绿 - 重构循环
+1. 红：写一个失败的测试
+2. 绿：写最少的代码让测试通过
+3. 重构：改进代码，保持测试通过
+
+### 重构前
+1. 确保测试覆盖
+2. 运行所有测试
+3. 确认测试通过
+
+### 重构后
+1. 运行所有测试
+2. 确认测试通过
+3. 提交代码
+```
+
+### 小步重构
+
+```markdown
+### 小步原则
+- 每次只做一个小改动
+- 频繁运行测试
+- 频繁提交代码
+
+### 重构步骤
+1. 识别代码异味
+2. 选择重构模式
+3. 执行小改动
+4. 运行测试
+5. 提交代码
+6. 重复 1-5
+```
+
+### 安全重构
+
+```markdown
+### 重构安全检查
+- [ ] 测试覆盖完整
+- [ ] 版本控制就绪
+- [ ] 回滚方案准备
+- [ ] 代码审查安排
+
+### 重构风险控制
+- 避免大规模重构
+- 分阶段重构
+- 保持向后兼容
+- 监控性能变化
+```
+
+---
+
+## 📋 重构检查清单
+
+### 重构前
+
+- [ ] 测试覆盖完整
+- [ ] 所有测试通过
+- [ ] 版本控制就绪
+- [ ] 回滚方案准备
+- [ ] 代码审查安排
+
+### 重构中
+
+- [ ] 小步改动
+- [ ] 频繁测试
+- [ ] 频繁提交
+- [ ] 保持兼容
+- [ ] 记录变更
+
+### 重构后
+
+- [ ] 所有测试通过
+- [ ] 性能无退化
+- [ ] 代码审查通过
+- [ ] 文档已更新
+- [ ] 提交信息清晰
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[Martin Fowler - Refactoring](https://martinfowler.com/books/refactoring.html)** - 重构权威指南
+- **[Google Engineering Practices](https://google.github.io/eng-practices/)** - Google 工程实践
+- **[Clean Code](https://www.oreilly.com/library/view/clean-code-a/9780136083238/)** - 代码整洁之道
+- **[Working Effectively with Legacy Code](https://www.oreilly.com/library/view/working-effectively-with/0131177052/)** - 有效处理遗留代码
+
+### 学习资源
+
+- **[Refactoring Guru](https://refactoring.guru/)** - 重构指南
+- **[Refactoring Catalog](https://martinfowler.com/books/refactoring.html)** - 重构目录
+- **[Code Refactoring Techniques](https://www.jetbrains.com/resharper/features/refactoring.html)** - 重构技巧
+
+### 工具
+
+- **[pylint](https://pylint.pycqa.org/)** - Python 代码检查
+- **[black](https://black.readthedocs.io/)** - Python 代码格式化
+- **[rope](https://rope.github.io/)** - Python 重构工具
+- **[ESLint](https://eslint.org/)** - JavaScript 代码检查
+- **[Prettier](https://prettier.io/)** - 代码格式化
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，基于 Martin Fowler/Google 最佳实践 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🟡 中（核心技能）

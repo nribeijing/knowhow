@@ -1,0 +1,536 @@
+# Skill: 故障排查
+
+> 基于 Google SRE、Microsoft 最佳实践的故障排查技能
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🟡 中（核心技能）
+
+---
+
+## 📋 前置技能
+
+- ✅ [debugging.skill](../debugging/debugging.skill) - 通用调试
+- ✅ [system-architecture.skill](../architecture/system-architecture.skill) - 系统架构设计
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[Google SRE Book](https://sre.google/books/)** - Google SRE 书籍
+- **[Microsoft Incident Management](https://docs.microsoft.com/en-us/azure/architecture/framework/operations/incident-management)** - Microsoft 事件管理
+- **[Incident Management Best Practices](https://www.atlassian.com/incident-management)** - Atlassian 事件管理
+
+### 行业最佳实践
+
+- **5 Why Analysis** - 5 Why 根因分析
+- **Fishbone Diagram** - 鱼骨图分析
+- **Post-mortem** - 事后复盘
+- **Blameless Culture** - 无责备文化
+
+---
+
+## 🔍 故障排查方法论
+
+### 排查流程
+
+```markdown
+### 1. 故障检测
+- 监控告警触发
+- 用户报告
+- 自动化检测
+
+### 2. 故障评估
+- 影响范围评估
+- 严重级别判定
+- 优先级排序
+
+### 3. 故障定位
+- 信息收集
+- 假设提出
+- 假设验证
+- 根因定位
+
+### 4. 故障恢复
+- 临时修复
+- 永久修复
+- 验证修复
+
+### 5. 事后复盘
+- 时间线整理
+- 根因分析
+- 改进措施
+- 经验总结
+```
+
+### 5 Why 分析法
+
+```markdown
+### 示例：API 响应慢
+
+问题：API 响应时间超过 5 秒
+
+1. 为什么响应慢？
+   → 数据库查询慢
+
+2. 为什么数据库查询慢？
+   → 查询没有使用索引
+
+3. 为什么没有使用索引？
+   → 索引缺失
+
+4. 为什么索引缺失？
+   → 新字段未添加索引
+
+5. 为什么新字段未添加索引？
+   → 代码审查未检查索引（根因）
+
+改进措施：
+- 添加缺失索引
+- 更新代码审查清单
+- 添加索引检查自动化
+```
+
+### 鱼骨图分析
+
+```markdown
+### 人 (People)
+- 培训不足
+- 经验不足
+- 沟通不畅
+
+### 流程 (Process)
+- 流程缺失
+- 流程不完善
+- 执行不到位
+
+### 工具 (Tools)
+- 工具不足
+- 工具不好用
+- 工具配置错误
+
+### 环境 (Environment)
+- 硬件故障
+- 网络问题
+- 第三方依赖
+
+### 数据 (Data)
+- 数据质量问题
+- 数据量过大
+- 数据格式错误
+```
+
+---
+
+## 📊 信息收集
+
+### 日志分析
+
+```python
+# 日志收集
+import logging
+
+# 设置日志级别
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+logger = logging.getLogger(__name__)
+
+# 关键日志
+logger.info("用户登录", extra={
+    'user_id': user_id,
+    'ip_address': request.client.host,
+    'user_agent': request.headers.get('user-agent')
+})
+
+logger.error("数据库连接失败", extra={
+    'database': 'users',
+    'error': str(e),
+    'retry_count': retry_count
+}, exc_info=True)
+
+# 日志搜索
+# 使用 grep 搜索错误
+grep "ERROR" app.log | grep "2026-03-14"
+
+# 使用 awk 提取字段
+awk -F' ' '{print $1, $2, $5}' app.log
+
+# 使用 jq 解析 JSON 日志
+cat app.log | jq 'select(.level == "ERROR")'
+```
+
+### 监控指标分析
+
+```python
+# Prometheus 查询
+# 查询错误率
+rate(http_requests_total{status=~"5.."}[5m])
+
+# 查询延迟
+histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))
+
+# 查询资源使用
+rate(container_cpu_usage_seconds_total[5m])
+rate(container_memory_usage_bytes[5m])
+
+# Grafana 仪表盘
+# 创建性能仪表盘
+# 添加错误率面板
+# 添加延迟面板
+# 添加资源使用面板
+```
+
+### 链路追踪
+
+```python
+# OpenTelemetry 追踪
+from opentelemetry import trace
+
+tracer = trace.get_tracer(__name__)
+
+with tracer.start_as_current_span("process_order") as span:
+    span.set_attribute("order.id", order_id)
+    
+    with tracer.start_as_current_span("validate_order"):
+        validate_order(order)
+    
+    with tracer.start_as_current_span("process_payment"):
+        process_payment(order)
+    
+    with tracer.start_as_current_span("create_order_record"):
+        create_order_record(order)
+
+# Jaeger 查询
+# 搜索 Trace ID
+# 查看 Span 时间线
+# 分析慢 Span
+```
+
+---
+
+## 🚨 常见故障排查
+
+### 数据库故障
+
+```markdown
+### 症状
+- 查询超时
+- 连接失败
+- 死锁
+
+### 排查步骤
+1. 检查数据库连接数
+2. 检查慢查询日志
+3. 检查锁等待
+4. 检查资源使用
+
+### 解决方案
+1. 优化慢查询
+2. 添加索引
+3. 调整连接池
+4. 扩容数据库
+```
+
+```sql
+-- 检查慢查询
+SELECT * FROM pg_stat_statements 
+ORDER BY total_time DESC 
+LIMIT 10;
+
+-- 检查锁等待
+SELECT * FROM pg_locks WHERE NOT granted;
+
+-- 检查连接数
+SELECT count(*) FROM pg_stat_activity;
+
+-- 分析表
+ANALYZE table_name;
+```
+
+### API 故障
+
+```markdown
+### 症状
+- 5xx 错误
+- 响应慢
+- 超时
+
+### 排查步骤
+1. 检查 API 日志
+2. 检查依赖服务
+3. 检查资源使用
+4. 检查限流配置
+
+### 解决方案
+1. 修复代码 Bug
+2. 重启服务
+3. 扩容实例
+4. 调整限流
+```
+
+```python
+# API 健康检查
+import requests
+
+def health_check():
+    endpoints = [
+        'http://api:8000/health',
+        'http://db:5432/health',
+        'http://redis:6379/health'
+    ]
+    
+    for endpoint in endpoints:
+        try:
+            response = requests.get(endpoint, timeout=5)
+            if response.status_code != 200:
+                print(f"{endpoint}  unhealthy")
+        except Exception as e:
+            print(f"{endpoint}  error: {e}")
+```
+
+### 前端故障
+
+```markdown
+### 症状
+- 页面加载慢
+- 白屏
+- JavaScript 错误
+
+### 排查步骤
+1. 检查浏览器控制台
+2. 检查网络请求
+3. 检查资源加载
+4. 检查 CDN 状态
+
+### 解决方案
+1. 修复 JavaScript 错误
+2. 优化资源加载
+3. 清理缓存
+4. 回滚版本
+```
+
+```javascript
+// 前端错误监控
+window.onerror = function(message, source, lineno, colno, error) {
+  console.error('Error:', {
+    message,
+    source,
+    lineno,
+    colno,
+    stack: error?.stack
+  });
+  
+  // 发送到错误监控服务
+  sendToMonitoring({
+    type: 'javascript_error',
+    message,
+    source,
+    lineno,
+    colno,
+    stack: error?.stack,
+    url: window.location.href,
+    userAgent: navigator.userAgent
+  });
+};
+```
+
+---
+
+## 🔥 故障恢复
+
+### 临时修复
+
+```markdown
+### 重启服务
+kubectl rollout restart deployment/user-service
+
+### 回滚版本
+kubectl rollout undo deployment/user-service
+
+### 扩容实例
+kubectl scale deployment/user-service --replicas=5
+
+### 切换流量
+kubectl patch service user-service -p '{"spec":{"selector":{"version":"v1"}}}'
+
+### 降级功能
+# 关闭非核心功能
+# 启用降级模式
+```
+
+### 永久修复
+
+```markdown
+### 代码修复
+1. 修复 Bug
+2. 添加测试
+3. 代码审查
+4. 部署验证
+
+### 配置修复
+1. 修改配置
+2. 验证配置
+3. 部署配置
+4. 监控验证
+
+### 架构修复
+1. 架构优化
+2. 容量规划
+3. 冗余设计
+4. 故障隔离
+```
+
+---
+
+## 📝 事后复盘
+
+### 复盘模板
+
+```markdown
+# 故障复盘报告
+
+## 基本信息
+- 故障 ID: INC-2026-0314-001
+- 严重级别：P1
+- 状态：已解决
+- 持续时间：2 小时 30 分钟
+- 影响用户：10,000 用户
+
+## 故障摘要
+（简要描述故障情况和影响）
+
+## 时间线
+| 时间 | 事件 | 负责人 |
+|------|------|--------|
+| 10:00 | 监控告警触发 | 系统 |
+| 10:05 | 工程师确认故障 | 张三 |
+| 10:15 | 启动应急响应 | 李四 |
+| 10:30 | 定位根因 | 王五 |
+| 11:00 | 临时修复 | 张三 |
+| 11:30 | 服务恢复 | 系统 |
+| 12:30 | 故障关闭 | 李四 |
+
+## 影响评估
+### 业务影响
+- 无法登录
+- 无法下单
+- 订单损失：100 单
+
+### 用户影响
+- 影响用户：10,000
+- 用户投诉：50
+- 社交媒体：10 条
+
+## 根因分析
+### 直接原因
+数据库连接池耗尽
+
+### 根本原因
+1. 连接池配置过小
+2. 缺少连接池监控
+3. 压力测试不足
+
+### 5 Why 分析
+（使用 5 Why 分析法）
+
+## 改进措施
+| 措施 | 负责人 | 截止日期 | 状态 |
+|------|--------|---------|------|
+| 优化连接池配置 | 张三 | 2026-03-21 | 进行中 |
+| 添加连接池监控 | 李四 | 2026-03-21 | 未开始 |
+| 压力测试验证 | 王五 | 2026-03-28 | 未开始 |
+| 更新运维手册 | 赵六 | 2026-03-28 | 未开始 |
+
+## 经验教训
+### 做得好的
+- 响应及时
+- 沟通顺畅
+- 协作良好
+
+### 需要改进的
+- 监控不完善
+- 文档不完整
+- 测试不足
+
+## 附录
+### 相关日志
+（插入关键日志）
+
+### 相关图表
+（插入监控图表）
+
+### 参考资料
+（插入相关文档链接）
+```
+
+---
+
+## 📋 故障排查检查清单
+
+### 信息收集
+
+- [ ] 收集错误日志
+- [ ] 收集监控指标
+- [ ] 收集链路追踪
+- [ ] 收集用户反馈
+
+### 故障定位
+
+- [ ] 确定影响范围
+- [ ] 提出假设
+- [ ] 验证假设
+- [ ] 定位根因
+
+### 故障恢复
+
+- [ ] 临时修复实施
+- [ ] 永久修复计划
+- [ ] 修复验证
+- [ ] 监控观察
+
+### 事后复盘
+
+- [ ] 时间线整理
+- [ ] 根因分析
+- [ ] 改进措施
+- [ ] 经验总结
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[Google SRE Book](https://sre.google/books/)** - Google SRE 书籍
+- **[Microsoft Incident Management](https://docs.microsoft.com/en-us/azure/architecture/framework/operations/incident-management)** - Microsoft 事件管理
+- **[Incident Management Best Practices](https://www.atlassian.com/incident-management)** - Atlassian 事件管理
+
+### 学习资源
+
+- **[Incident.io](https://incident.io/)** - 事件管理平台
+- **[Blameless Post-mortems](https://landing.google.com/sre/workbook/chapters/postmortem-culture/)** - 无责备复盘
+
+### 工具
+
+- **[PagerDuty](https://www.pagerduty.com/)** - 事件管理平台
+- **[Opsgenie](https://www.atlassian.com/software/opsgenie)** - 事件管理平台
+- **[Jaeger](https://www.jaegertracing.io/)** - 链路追踪
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，基于 Google SRE/Microsoft 最佳实践 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🟡 中（核心技能）

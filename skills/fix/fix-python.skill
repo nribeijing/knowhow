@@ -1,0 +1,653 @@
+# Skill: Python 代码修复
+
+> 基于 Google、Microsoft、Martin Fowler 最佳实践的 Python 代码修复技能
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🟡 中（核心技能）
+
+---
+
+## 📋 前置技能
+
+- ✅ [systematic-fix.skill](../systematic-fix.skill) - 系统性代码修复
+- ✅ [testing-python.skill](../testing/testing-python.skill) - Python 测试
+- ✅ [debugging-python.skill](../debugging/debugging-python.skill) - Python 调试
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[Martin Fowler - Refactoring](https://martinfowler.com/books/refactoring.html)** - 重构权威指南
+- **[Google Python Style Guide](https://google.github.io/styleguide/pyguide.html)** - Google Python 规范
+- **[Microsoft Python Coding Standards](https://docs.microsoft.com/en-us/python/)** - Microsoft Python 标准
+
+### 工具栈
+
+- **pylint** - 代码检查
+- **black** - 代码格式化
+- **flake8** - 代码风格
+- **mypy** - 类型检查
+- **autoflake** - 清理未使用代码
+- **pyupgrade** - 升级语法
+
+---
+
+## 🔧 Python 重构技巧
+
+### 代码异味识别
+
+**长方法**:
+```python
+# ❌ 代码异味：方法过长（>50 行）
+def process_user_data(data):
+    # 100 行代码...
+    pass
+
+# ✅ 修复：提取方法
+def process_user_data(data):
+    validate_data(data)
+    normalized = normalize_data(data)
+    user = create_user(normalized)
+    send_notifications(user)
+    return user
+```
+
+**大类**:
+```python
+# ❌ 代码异味：类过大（>500 行）
+class UserManager:
+    # 500 行代码，包含所有用户相关操作
+    pass
+
+# ✅ 修复：拆分类
+class UserService:
+    # 业务逻辑
+    
+class UserRepository:
+    # 数据访问
+    
+class UserValidator:
+    # 验证逻辑
+```
+
+**重复代码**:
+```python
+# ❌ 代码异味：重复代码
+def create_user(data):
+    email = data['email'].lower().strip()
+    name = data['name'].strip()
+    # ...
+
+def update_user(user_id, data):
+    email = data['email'].lower().strip()
+    name = data['name'].strip()
+    # ...
+
+# ✅ 修复：提取公共逻辑
+def normalize_user_data(data):
+    return {
+        'email': data['email'].lower().strip(),
+        'name': data['name'].strip()
+    }
+```
+
+**过长参数列表**:
+```python
+# ❌ 代码异味：参数过多（>5 个）
+def create_user(email, name, age, phone, address, city, country, role):
+    pass
+
+# ✅ 修复：使用数据类
+from dataclasses import dataclass
+
+@dataclass
+class UserData:
+    email: str
+    name: str
+    age: int
+    phone: str
+    address: str
+    city: str
+    country: str
+    role: str
+
+def create_user(user_data: UserData):
+    pass
+```
+
+---
+
+### 重构模式
+
+**提取方法**:
+```python
+# ❌ 修复前
+def calculate_order_total(order):
+    subtotal = 0
+    for item in order.items:
+        subtotal += item.price * item.quantity
+    
+    tax = subtotal * 0.1
+    shipping = 10 if subtotal < 100 else 0
+    total = subtotal + tax + shipping
+    
+    return {
+        'subtotal': subtotal,
+        'tax': tax,
+        'shipping': shipping,
+        'total': total
+    }
+
+# ✅ 修复后
+def calculate_order_total(order):
+    subtotal = calculate_subtotal(order)
+    tax = calculate_tax(subtotal)
+    shipping = calculate_shipping(subtotal)
+    total = subtotal + tax + shipping
+    
+    return {
+        'subtotal': subtotal,
+        'tax': tax,
+        'shipping': shipping,
+        'total': total
+    }
+
+def calculate_subtotal(order):
+    return sum(item.price * item.quantity for item in order.items)
+
+def calculate_tax(subtotal):
+    return subtotal * 0.1
+
+def calculate_shipping(subtotal):
+    return 10 if subtotal < 100 else 0
+```
+
+**内联方法**:
+```python
+# ❌ 修复前：方法过于简单
+def get_user_email(user):
+    return user.email
+
+# ✅ 修复后：直接使用属性
+email = user.email
+```
+
+**移动方法**:
+```python
+# ❌ 修复前：方法位置不当
+class Order:
+    def calculate_total(self):
+        pass
+    
+    def send_confirmation_email(self):
+        # 邮件发送逻辑应该在邮件服务中
+        pass
+
+# ✅ 修复后：移动到合适的类
+class Order:
+    def calculate_total(self):
+        pass
+
+class EmailService:
+    def send_order_confirmation(self, order):
+        pass
+```
+
+**替换条件逻辑**:
+```python
+# ❌ 修复前：复杂条件
+def get_discount(user, order):
+    if user.is_vip and order.total > 1000:
+        return 0.2
+    elif user.is_vip:
+        return 0.1
+    elif order.total > 1000:
+        return 0.05
+    else:
+        return 0
+
+# ✅ 修复后：策略模式
+class DiscountStrategy:
+    def calculate(self, user, order):
+        pass
+
+class VIPDiscount(DiscountStrategy):
+    def calculate(self, user, order):
+        if order.total > 1000:
+            return 0.2
+        return 0.1
+
+class RegularDiscount(DiscountStrategy):
+    def calculate(self, user, order):
+        if order.total > 1000:
+            return 0.05
+        return 0
+
+def get_discount(user, order):
+    strategy = VIPDiscount() if user.is_vip else RegularDiscount()
+    return strategy.calculate(user, order)
+```
+
+---
+
+## 🐛 Python Bug 修复
+
+### 常见 Bug 模式
+
+**可变默认参数**:
+```python
+# ❌ Bug：可变默认参数
+def add_item(item, items=[]):
+    items.append(item)
+    return items
+
+# ✅ 修复
+def add_item(item, items: Optional[List] = None):
+    if items is None:
+        items = []
+    items.append(item)
+    return items
+```
+
+**循环变量泄漏**:
+```python
+# ❌ Bug：循环变量泄漏
+for i in range(10):
+    pass
+print(i)  # i 仍然可访问
+
+# ✅ 修复：使用函数作用域
+def process():
+    for i in range(10):
+        pass
+    # i 只在函数内可访问
+```
+
+**可变对象比较**:
+```python
+# ❌ Bug：可变对象比较
+list1 = [1, 2, 3]
+list2 = [1, 2, 3]
+if list1 == list2:  # 比较的是值
+    pass
+
+# ✅ 修复：明确比较意图
+if list1 is list2:  # 比较的是身份
+    pass
+```
+
+**异常吞噬**:
+```python
+# ❌ Bug：异常吞噬
+try:
+    process_data()
+except:
+    pass
+
+# ✅ 修复：记录异常
+try:
+    process_data()
+except Exception as e:
+    logger.error(f"处理失败：{e}", exc_info=True)
+    raise
+```
+
+---
+
+### FastAPI 特定修复
+
+**异步代码修复**:
+```python
+# ❌ Bug：阻塞异步代码
+@app.get("/users")
+async def get_users():
+    users = db.query(User).all()  # 阻塞操作
+    return users
+
+# ✅ 修复：使用异步
+@app.get("/users")
+async def get_users(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User))
+    users = result.scalars().all()
+    return users
+```
+
+**依赖注入修复**:
+```python
+# ❌ Bug：依赖管理不当
+@app.get("/users/{user_id}")
+async def get_user(user_id: int):
+    db = SessionLocal()  # 手动创建会话
+    try:
+        user = db.query(User).get(user_id)
+        return user
+    finally:
+        db.close()
+
+# ✅ 修复：使用依赖注入
+@app.get("/users/{user_id}")
+async def get_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    return user
+```
+
+**响应模型修复**:
+```python
+# ❌ Bug：响应模型不匹配
+@app.get("/users/{user_id}", response_model=UserResponse)
+async def get_user(user_id: int):
+    return {"name": "test"}  # 缺少必需字段
+
+# ✅ 修复：确保响应匹配
+@app.get("/users/{user_id}", response_model=UserResponse)
+async def get_user(user_id: int):
+    user = await get_user_from_db(user_id)
+    if not user:
+        raise HTTPException(status_code=404)
+    return user
+```
+
+---
+
+## 🚀 Python 性能优化
+
+### 性能问题识别
+
+**N+1 查询**:
+```python
+# ❌ 性能问题：N+1 查询
+users = db.query(User).all()
+for user in users:
+    posts = db.query(Post).filter(Post.user_id == user.id).all()
+
+# ✅ 修复：使用 JOIN
+from sqlalchemy.orm import joinedload
+
+users = db.query(User).options(joinedload(User.posts)).all()
+```
+
+**内存泄漏**:
+```python
+# ❌ 性能问题：内存泄漏
+cache = {}
+
+def get_data(key):
+    if key not in cache:
+        cache[key] = load_data(key)
+    return cache[key]
+
+# ✅ 修复：使用 LRU 缓存
+from functools import lru_cache
+
+@lru_cache(maxsize=1000)
+def get_data(key):
+    return load_data(key)
+```
+
+**低效循环**:
+```python
+# ❌ 性能问题：低效循环
+result = []
+for i in range(len(items)):
+    result.append(items[i] * 2)
+
+# ✅ 修复：列表推导式
+result = [item * 2 for item in items]
+```
+
+---
+
+### 性能优化技巧
+
+**使用生成器**:
+```python
+# ❌ 修复前：占用大量内存
+def get_large_dataset():
+    return [process(i) for i in range(1000000)]
+
+# ✅ 修复后：使用生成器
+def get_large_dataset():
+    return (process(i) for i in range(1000000))
+```
+
+**使用内置函数**:
+```python
+# ❌ 修复前：手动实现
+def sum_list(items):
+    total = 0
+    for item in items:
+        total += item
+    return total
+
+# ✅ 修复后：使用内置函数
+def sum_list(items):
+    return sum(items)
+```
+
+**使用合适的数据结构**:
+```python
+# ❌ 修复前：列表查找 O(n)
+def is_valid_user(user_id, users):
+    return user_id in users  # 列表查找
+
+# ✅ 修复后：集合查找 O(1)
+def is_valid_user(user_id, users):
+    return user_id in set(users)  # 集合查找
+```
+
+---
+
+## 🔒 Python 安全修复
+
+### 常见安全漏洞
+
+**SQL 注入修复**:
+```python
+# ❌ 安全漏洞
+query = f"SELECT * FROM users WHERE email = '{email}'"
+db.execute(query)
+
+# ✅ 修复：参数化查询
+query = "SELECT * FROM users WHERE email = :email"
+db.execute(query, {"email": email})
+```
+
+**命令注入修复**:
+```python
+# ❌ 安全漏洞
+os.system(f"ls {user_input}")
+
+# ✅ 修复：使用 subprocess
+import subprocess
+subprocess.run(["ls", user_input], check=True)
+```
+
+**路径遍历修复**:
+```python
+# ❌ 安全漏洞
+def read_file(filename):
+    with open(f"/data/{filename}", 'r') as f:
+        return f.read()
+
+# ✅ 修复：验证路径
+import os
+from pathlib import Path
+
+def read_file(filename):
+    base_path = Path("/data").resolve()
+    file_path = (base_path / filename).resolve()
+    
+    if not str(file_path).startswith(str(base_path)):
+        raise ValueError("Invalid path")
+    
+    with open(file_path, 'r') as f:
+        return f.read()
+```
+
+---
+
+### 依赖安全修复
+
+**漏洞依赖修复**:
+```bash
+# 检查漏洞依赖
+pip install safety
+safety check
+
+# 更新依赖
+pip install --upgrade package-name
+
+# 使用固定版本
+# requirements.txt
+requests==2.31.0
+flask==2.3.3
+```
+
+---
+
+## 📋 修复检查清单
+
+### 代码重构
+
+- [ ] 代码异味已识别
+- [ ] 重构方法适当
+- [ ] 测试覆盖完整
+- [ ] 性能无退化
+- [ ] 文档已更新
+
+### Bug 修复
+
+- [ ] 根因已定位
+- [ ] 修复方案合理
+- [ ] 测试添加完整
+- [ ] 无副作用
+- [ ] 文档已更新
+
+### 性能优化
+
+- [ ] 性能瓶颈已定位
+- [ ] 优化方案合理
+- [ ] 基准测试通过
+- [ ] 资源使用正常
+- [ ] 监控已添加
+
+### 安全修复
+
+- [ ] 漏洞已识别
+- [ ] 修复方案安全
+- [ ] 无新漏洞引入
+- [ ] 安全测试通过
+- [ ] 依赖已更新
+
+---
+
+## 🔧 修复工具
+
+### 自动化工具
+
+**代码质量**:
+```bash
+# pylint 代码检查
+pylint app/ --max-line-length=100
+
+# black 代码格式化
+black app/ --line-length 100
+
+# flake8 代码风格
+flake8 app/ --max-line-length=100
+
+# mypy 类型检查
+mypy app/ --ignore-missing-imports
+```
+
+**自动修复**:
+```bash
+# autoflake 清理未使用代码
+autoflake --in-place --remove-all-unused-imports app/
+
+# pyupgrade 升级语法
+pyupgrade --py311-plus app/
+
+# isort 导入排序
+isort app/
+```
+
+**安全扫描**:
+```bash
+# bandit 安全检查
+bandit -r app/
+
+# safety 依赖检查
+safety check
+```
+
+---
+
+### CI/CD 集成
+
+**GitHub Actions**:
+```yaml
+name: Code Quality
+on: [pull_request]
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.11
+      - name: Install dependencies
+        run: pip install pylint black flake8 mypy bandit
+      - name: Run linters
+        run: |
+          black --check app/
+          flake8 app/
+          pylint app/
+          mypy app/
+          bandit -r app/
+```
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[Martin Fowler - Refactoring](https://martinfowler.com/books/refactoring.html)** - 重构权威指南
+- **[Google Python Style Guide](https://google.github.io/styleguide/pyguide.html)** - Google Python 规范
+- **[Microsoft Python Coding Standards](https://docs.microsoft.com/en-us/python/)** - Microsoft Python 标准
+
+### 学习资源
+
+- **[Refactoring Guru](https://refactoring.guru/)** - 重构指南
+- **[Python Refactoring](https://www.python.org/dev/peps/pep-0008/)** - Python 重构
+- **[FastAPI Best Practices](https://fastapi.tiangolo.com/)** - FastAPI 最佳实践
+
+### 工具文档
+
+- **[pylint Documentation](https://pylint.pycqa.org/)** - pylint 文档
+- **[black Documentation](https://black.readthedocs.io/)** - black 文档
+- **[bandit Documentation](https://bandit.readthedocs.io/)** - bandit 文档
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，基于 Google/Microsoft/Martin Fowler 最佳实践 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🟡 中（核心技能）

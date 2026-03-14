@@ -1,0 +1,725 @@
+# Skill: 系统性代码修复
+
+> 基于 Google、Microsoft、Martin Fowler 最佳实践的代码修复技能
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🔴 高（核心技能）
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[Martin Fowler - Refactoring](https://martinfowler.com/books/refactoring.html)** - 重构权威指南
+- **[Google Engineering Practices](https://google.github.io/eng-practices/)** - Google 工程实践
+- **[Microsoft Engineering Guidelines](https://github.com/microsoft/eng-guidelines)** - Microsoft 工程指南
+- **[OWASP Repair Guide](https://owasp.org/www-project-repair-guide/)** - OWASP 修复指南
+
+### 行业最佳实践
+
+- **Refactoring Patterns** - 重构模式
+- **Technical Debt Management** - 技术债务管理
+- **Bug Fix Best Practices** - Bug 修复最佳实践
+- **Security Patch Management** - 安全补丁管理
+
+---
+
+## 🎯 核心原则
+
+### 1. 修复根因 (Fix Root Cause)
+
+> "修复问题，而非症状。"
+> — Google Engineering Practices
+
+**实践**:
+```
+✅ 使用 5 Why 法定位根因
+✅ 修复导致问题的根本原因
+✅ 添加测试防止回归
+✅ 更新文档和 Runbook
+
+❌ 仅修复表面症状
+❌ 临时规避而非根本解决
+❌ 不添加测试
+❌ 不更新文档
+```
+
+**示例**:
+```python
+# ❌ 修复症状
+def get_user(user_id):
+    try:
+        return db.query(User).filter(User.id == user_id).one()
+    except Exception:
+        return None  # 临时规避
+
+# ✅ 修复根因
+def get_user(user_id: int) -> Optional[User]:
+    """获取用户，处理不存在的情况"""
+    try:
+        return db.query(User).filter(User.id == user_id).one()
+    except NoResultFound:
+        logger.warning(f"User {user_id} not found")
+        return None
+```
+
+---
+
+### 2. 最小化修改 (Minimize Changes)
+
+> "保持修改范围最小。"
+> — Microsoft Engineering Guidelines
+
+**实践**:
+```
+✅ 只修改必要的代码
+✅ 保持向后兼容
+✅ 分步提交
+✅ 小步验证
+
+❌ 大范围重构
+❌ 破坏性变更
+❌ 一次性大提交
+❌ 混合多个修复
+```
+
+---
+
+### 3. 保持测试通过 (Keep Tests Passing)
+
+> "测试是修复的安全网。"
+> — Martin Fowler
+
+**实践**:
+```
+✅ 修复前运行测试
+✅ 修复后运行测试
+✅ 添加回归测试
+✅ 保持 CI 通过
+
+❌ 无测试修复
+❌ 跳过测试
+❌ 破坏现有测试
+❌ 忽略 CI 失败
+```
+
+---
+
+### 4. 持续集成 (Continuous Integration)
+
+> "频繁集成，快速反馈。"
+> — Google Engineering Practices
+
+**实践**:
+```
+✅ 小步提交
+✅ 频繁推送
+✅ 及时合并
+✅ 快速反馈
+
+❌ 长期分支
+❌ 大提交
+❌ 延迟合并
+❌ 忽略反馈
+```
+
+---
+
+## 📏 修复流程
+
+### 步骤 1: 问题定位
+
+#### 1.1 复现问题
+
+**检查清单**:
+```markdown
+- [ ] 问题可以稳定复现
+- [ ] 复现步骤清晰
+- [ ] 最小复现案例
+- [ ] 环境信息完整
+```
+
+#### 1.2 定位根因
+
+**5 Why 分析法**:
+```markdown
+问题：API 返回 500 错误
+
+1. 为什么返回 500？
+   → 因为代码抛出 KeyError
+
+2. 为什么抛出 KeyError？
+   → 因为访问了不存在的字典键
+
+3. 为什么访问不存在的键？
+   → 因为数据缺少必需字段
+
+4. 为什么数据缺少字段？
+   → 因为创建接口未验证
+
+5. 为什么未验证？
+   → 因为缺少输入验证逻辑（根因）
+```
+
+---
+
+### 步骤 2: 设计修复方案
+
+#### 2.1 修复策略
+
+**策略选择**:
+```markdown
+### 立即修复
+- 严重 Bug
+- 安全问题
+- 数据损坏
+- 服务中断
+
+### 计划修复
+- 性能问题
+- 技术债务
+- 代码优化
+- 文档更新
+
+### 暂缓修复
+- 影响小
+- 风险高
+- 有临时方案
+```
+
+#### 2.2 修复设计
+
+**设计模板**:
+```markdown
+## 修复方案
+
+### 问题分析
+- 问题描述：
+- 影响范围：
+- 根因分析：
+
+### 修复方案
+- 方案描述：
+- 修改范围：
+- 风险评估：
+
+### 测试计划
+- 单元测试：
+- 集成测试：
+- 回归测试：
+
+### 回滚方案
+- 回滚步骤：
+- 回滚验证：
+```
+
+---
+
+### 步骤 3: 实施修复
+
+#### 3.1 重构技巧
+
+**提取方法**:
+```python
+# ❌ 修复前：长方法
+def process_user_data(data):
+    # 验证数据
+    if not data.get('email'):
+        raise ValueError("Email required")
+    if not is_valid_email(data['email']):
+        raise ValueError("Invalid email")
+    
+    # 处理数据
+    email = data['email'].lower().strip()
+    name = data.get('name', '').strip()
+    
+    # 保存数据
+    user = User(email=email, name=name)
+    db.add(user)
+    db.commit()
+    
+    # 发送通知
+    send_welcome_email(user)
+    notify_admin(user)
+    
+    return user
+
+# ✅ 修复后：提取方法
+def process_user_data(data):
+    validate_user_data(data)
+    user = create_user(data)
+    send_notifications(user)
+    return user
+
+def validate_user_data(data):
+    if not data.get('email'):
+        raise ValueError("Email required")
+    if not is_valid_email(data['email']):
+        raise ValueError("Invalid email")
+
+def create_user(data):
+    email = data['email'].lower().strip()
+    name = data.get('name', '').strip()
+    user = User(email=email, name=name)
+    db.add(user)
+    db.commit()
+    return user
+
+def send_notifications(user):
+    send_welcome_email(user)
+    notify_admin(user)
+```
+
+**重命名**:
+```python
+# ❌ 修复前：模糊命名
+def proc(d):
+    return d.get('e')
+
+# ✅ 修复后：清晰命名
+def process_user_data(data: dict) -> Optional[str]:
+    """获取用户邮箱"""
+    return data.get('email')
+```
+
+**消除重复**:
+```python
+# ❌ 修复前：重复代码
+def create_user(data):
+    email = data['email'].lower().strip()
+    name = data['name'].strip()
+    user = User(email=email, name=name)
+    db.add(user)
+    db.commit()
+    return user
+
+def update_user(user_id, data):
+    user = db.query(User).get(user_id)
+    email = data['email'].lower().strip()
+    name = data['name'].strip()
+    user.email = email
+    user.name = name
+    db.commit()
+    return user
+
+# ✅ 修复后：消除重复
+def normalize_user_data(data):
+    return {
+        'email': data['email'].lower().strip(),
+        'name': data['name'].strip()
+    }
+
+def create_user(data):
+    normalized = normalize_user_data(data)
+    user = User(**normalized)
+    db.add(user)
+    db.commit()
+    return user
+
+def update_user(user_id, data):
+    user = db.query(User).get(user_id)
+    normalized = normalize_user_data(data)
+    for key, value in normalized.items():
+        setattr(user, key, value)
+    db.commit()
+    return user
+```
+
+---
+
+#### 3.2 Bug 修复
+
+**修复模式**:
+```python
+# 模式 1: 添加验证
+# ❌ 修复前
+def transfer_money(from_account, to_account, amount):
+    from_account.balance -= amount
+    to_account.balance += amount
+
+# ✅ 修复后
+def transfer_money(from_account, to_account, amount):
+    if amount <= 0:
+        raise ValueError("Amount must be positive")
+    if from_account.balance < amount:
+        raise ValueError("Insufficient balance")
+    
+    from_account.balance -= amount
+    to_account.balance += amount
+
+# 模式 2: 添加空值处理
+# ❌ 修复前
+def get_user_name(user):
+    return user.name.upper()
+
+# ✅ 修复后
+def get_user_name(user: Optional[User]) -> Optional[str]:
+    if user is None:
+        return None
+    return user.name.upper()
+
+# 模式 3: 添加异常处理
+# ❌ 修复前
+def parse_date(date_str):
+    return datetime.strptime(date_str, '%Y-%m-%d')
+
+# ✅ 修复后
+def parse_date(date_str: str) -> Optional[datetime]:
+    try:
+        return datetime.strptime(date_str, '%Y-%m-%d')
+    except ValueError:
+        logger.error(f"Invalid date format: {date_str}")
+        return None
+```
+
+---
+
+### 步骤 4: 验证修复
+
+#### 4.1 测试验证
+
+**测试覆盖**:
+```markdown
+### 单元测试
+- [ ] 修复的问题
+- [ ] 边界条件
+- [ ] 异常情况
+
+### 集成测试
+- [ ] 模块交互
+- [ ] API 端点
+- [ ] 数据库操作
+
+### 回归测试
+- [ ] 现有功能
+- [ ] 相关功能
+- [ ] 核心流程
+```
+
+**测试示例**:
+```python
+def test_transfer_with_insufficient_balance():
+    """测试余额不足的情况"""
+    from_account = Account(balance=100)
+    to_account = Account(balance=0)
+    
+    with pytest.raises(ValueError, match="Insufficient balance"):
+        transfer_money(from_account, to_account, 200)
+
+def test_transfer_with_invalid_amount():
+    """测试无效金额"""
+    from_account = Account(balance=100)
+    to_account = Account(balance=0)
+    
+    with pytest.raises(ValueError, match="Amount must be positive"):
+        transfer_money(from_account, to_account, -50)
+```
+
+#### 4.2 手动验证
+
+**验证清单**:
+```markdown
+### 功能验证
+- [ ] 问题不再复现
+- [ ] 原有功能正常
+- [ ] 无副作用
+
+### 性能验证
+- [ ] 性能无退化
+- [ ] 资源使用正常
+- [ ] 响应时间正常
+
+### 安全验证
+- [ ] 无安全漏洞
+- [ ] 权限检查正常
+- [ ] 数据保护正常
+```
+
+---
+
+### 步骤 5: 防止再发
+
+#### 5.1 添加监控
+
+**监控配置**:
+```python
+# 添加指标监控
+from prometheus_client import Counter, Histogram
+
+error_counter = Counter('app_errors_total', 'Total errors', ['type'])
+request_duration = Histogram('request_duration_seconds', 'Request duration')
+
+# 添加告警
+alerts:
+  - alert: HighErrorRate
+    expr: rate(app_errors_total[5m]) > 0.1
+    for: 5m
+    annotations:
+      summary: "错误率过高"
+```
+
+#### 5.2 更新文档
+
+**文档更新清单**:
+```markdown
+- [ ] API 文档
+- [ ] Runbook
+- [ ] FAQ
+- [ ] 架构文档
+- [ ] 测试文档
+```
+
+#### 5.3 团队分享
+
+**分享内容**:
+```markdown
+- 问题现象和影响
+- 根因分析
+- 修复方案
+- 防止再发措施
+- 经验教训
+```
+
+---
+
+## 🔧 技术债务管理
+
+### 债务识别
+
+**债务类型**:
+```markdown
+### 代码债务
+- 重复代码
+- 复杂代码
+- 长方法
+- 大类
+- 缺少注释
+
+### 测试债务
+- 测试不足
+- 测试慢
+- 测试不稳定
+- 缺少覆盖
+
+### 文档债务
+- 文档缺失
+- 文档过时
+- 文档不清晰
+
+### 设计债务
+- 架构问题
+- 耦合过高
+- 缺少抽象
+- 违反原则
+
+### 依赖债务
+- 依赖过时
+- 安全漏洞
+- 兼容问题
+```
+
+---
+
+### 还债策略
+
+**童子军规则**:
+```
+"离开营地时，让它比你来时更干净。"
+— 童子军规则
+
+每次修改代码时：
+- 清理周围的代码异味
+- 添加缺失的测试
+- 更新过时的注释
+- 改进变量命名
+```
+
+**定期还债**:
+```markdown
+### 每周
+- 修复 1-2 个小问题
+- 清理代码异味
+- 更新文档
+
+### 每月
+- 技术债务审查
+- 优先级排序
+- 计划还债
+
+### 每季度
+- 架构审查
+- 依赖更新
+- 性能优化
+```
+
+---
+
+## 🔒 安全修复
+
+### 常见安全漏洞修复
+
+**SQL 注入修复**:
+```python
+# ❌ 修复前
+query = f"SELECT * FROM users WHERE email = '{email}'"
+
+# ✅ 修复后
+query = "SELECT * FROM users WHERE email = :email"
+result = db.execute(query, {"email": email})
+```
+
+**XSS 修复**:
+```vue
+<!-- ❌ 修复前 -->
+<template>
+  <div v-html="userInput"></div>
+</template>
+
+<!-- ✅ 修复后 -->
+<template>
+  <div>{{ userInput }}</div>
+</template>
+```
+
+**CSRF 修复**:
+```python
+# ✅ 添加 CSRF Token
+from fastapi_csrf_protect import CsrfProtect
+
+@CsrfProtect.load_header
+async def load_csrf_header(request: Request):
+    return request.headers.get('X-CSRF-Token')
+```
+
+---
+
+### 修复优先级
+
+**优先级矩阵**:
+```
+         影响范围小    影响范围大
+严重     高优先级      紧急修复
+一般     中优先级      高优先级
+```
+
+**响应时间**:
+```markdown
+### 严重（Critical）
+- 响应：立即
+- 修复：24 小时内
+- 示例：数据泄露、服务中断
+
+### 高（High）
+- 响应：4 小时
+- 修复：1 周内
+- 示例：权限绕过、功能失效
+
+### 中（Medium）
+- 响应：1 天
+- 修复：1 月内
+- 示例：信息泄露、性能问题
+
+### 低（Low）
+- 响应：1 周
+- 修复：计划内
+- 示例：代码优化、文档更新
+```
+
+---
+
+## 📋 修复检查清单
+
+### 修复前
+
+- [ ] 问题已复现
+- [ ] 根因已定位
+- [ ] 修复方案设计
+- [ ] 风险评估完成
+- [ ] 测试计划制定
+
+### 修复中
+
+- [ ] 最小化修改
+- [ ] 保持测试通过
+- [ ] 代码审查通过
+- [ ] 文档已更新
+- [ ] 监控已添加
+
+### 修复后
+
+- [ ] 测试验证通过
+- [ ] 手动验证通过
+- [ ] 性能验证通过
+- [ ] 安全验证通过
+- [ ] 团队已分享
+
+### 防止再发
+
+- [ ] 监控已配置
+- [ ] 告警已设置
+- [ ] 文档已更新
+- [ ] Runbook 已更新
+- [ ] 测试已添加
+
+---
+
+## 📊 效果对比
+
+### ❌ 低效修复
+
+```
+1. 看到错误直接改代码
+2. 改完再试，不行再改
+3. 试了 10 次，终于好了
+4. 不知道为什么好
+5. 不添加测试
+6. 不更新文档
+7. 下次还犯同样错误
+```
+
+### ✅ 高效修复
+
+```
+1. 复现问题，收集信息
+2. 5 Why 分析，定位根因
+3. 设计修复方案
+4. 实施修复（小步）
+5. 验证修复（测试 + 手动）
+6. 添加监控和告警
+7. 更新文档和 Runbook
+8. 团队分享经验
+9. 防止问题再发
+```
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[Martin Fowler - Refactoring](https://martinfowler.com/books/refactoring.html)** - 重构权威指南
+- **[Google Engineering Practices](https://google.github.io/eng-practices/)** - Google 工程实践
+- **[Microsoft Engineering Guidelines](https://github.com/microsoft/eng-guidelines)** - Microsoft 工程指南
+- **[OWASP Repair Guide](https://owasp.org/www-project-repair-guide/)** - OWASP 修复指南
+
+### 学习资源
+
+- **[Refactoring Guru](https://refactoring.guru/)** - 重构指南
+- **[Technical Debt Quadrant](https://martinfowler.com/bliki/TechnicalDebtQuadrant.html)** - 技术债务四象限
+- **[5 Why Analysis](https://www.mindtools.com/pages/article/newTMC_5W.htm)** - 5 Why 分析法
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，基于 Google/Microsoft/Martin Fowler 最佳实践 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🔴 高（核心技能）

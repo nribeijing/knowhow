@@ -1,0 +1,639 @@
+# Skill: Vue 代码修复
+
+> 基于 Google、Microsoft 最佳实践的 Vue 3 代码修复技能
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🟡 中（核心技能）
+
+---
+
+## 📋 前置技能
+
+- ✅ [systematic-fix.skill](../systematic-fix.skill) - 系统性代码修复
+- ✅ [testing-vue.skill](../testing/testing-vue.skill) - Vue 测试
+- ✅ [debugging-vue.skill](../debugging/debugging-vue.skill) - Vue 调试
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[Vue.js Style Guide](https://vuejs.org/style-guide/)** - Vue 官方风格指南
+- **[Google TypeScript Style Guide](https://google.github.io/styleguide/tsguide.html)** - Google TypeScript 规范
+- **[Microsoft Vue Coding Guidelines](https://github.com/Microsoft/TypeScript/wiki/Coding-guidelines)** - Microsoft TypeScript 指南
+
+### 工具栈
+
+- **ESLint** - 代码检查
+- **Prettier** - 代码格式化
+- **Volar** - Vue 语言服务
+- **vue-tsc** - Vue TypeScript 检查
+- **Playwright** - E2E 测试
+
+---
+
+## 🔧 Vue 重构技巧
+
+### 代码异味识别
+
+**组件过大**:
+```vue
+<!-- ❌ 代码异味：组件过大（>500 行） -->
+<template>
+  <!-- 200 行模板 -->
+</template>
+
+<script setup lang="ts">
+  // 300 行代码
+</script>
+
+<!-- ✅ 修复：拆分组件 -->
+<!-- Parent.vue -->
+<template>
+  <UserProfile />
+  <UserSettings />
+  <UserActivity />
+</template>
+```
+
+**过长方法**:
+```vue
+<script setup lang="ts">
+// ❌ 代码异味：方法过长
+const processUserData = () => {
+  // 100 行代码
+}
+
+// ✅ 修复：拆分方法
+const validateUserData = () => { ... }
+const normalizeUserData = () => { ... }
+const saveUserData = () => { ... }
+</script>
+```
+
+**重复代码**:
+```vue
+<!-- ❌ 代码异味：重复代码 -->
+<!-- Component1.vue -->
+<template>
+  <div class="card">
+    <h3>{{ title }}</h3>
+    <p>{{ description }}</p>
+  </div>
+</template>
+
+<!-- Component2.vue -->
+<template>
+  <div class="card">
+    <h3>{{ title }}</h3>
+    <p>{{ description }}</p>
+  </div>
+</template>
+
+<!-- ✅ 修复：提取公共组件 -->
+<!-- BaseCard.vue -->
+<template>
+  <div class="card">
+    <h3><slot name="title"></slot></h3>
+    <p><slot name="description"></slot></p>
+  </div>
+</template>
+```
+
+**Props 过多**:
+```vue
+<script setup lang="ts">
+// ❌ 代码异味：Props 过多（>5 个）
+interface Props {
+  userId: number
+  userName: string
+  userEmail: string
+  userAge: number
+  userRole: string
+  isActive: boolean
+}
+
+// ✅ 修复：使用对象 Props
+interface Props {
+  user: {
+    id: number
+    name: string
+    email: string
+    age: number
+    role: string
+    isActive: boolean
+  }
+}
+</script>
+```
+
+---
+
+### 重构模式
+
+**提取组件**:
+```vue
+<!-- ❌ 修复前：大组件 -->
+<template>
+  <div>
+    <header>...</header>
+    <nav>...</nav>
+    <main>...</main>
+    <footer>...</footer>
+  </div>
+</template>
+
+<!-- ✅ 修复后：拆分组件 -->
+<template>
+  <div>
+    <AppHeader />
+    <AppNav />
+    <AppMain />
+    <AppFooter />
+  </div>
+</template>
+```
+
+**提取 Composable**:
+```vue
+<script setup lang="ts">
+// ❌ 修复前：逻辑混在组件中
+const count = ref(0)
+const increment = () => count.value++
+const decrement = () => count.value--
+
+const users = ref([])
+const fetchUsers = async () => { ... }
+const addUser = (user) => { ... }
+
+// ✅ 修复后：提取 Composable
+// composables/useCounter.ts
+export function useCounter() {
+  const count = ref(0)
+  const increment = () => count.value++
+  const decrement = () => count.value--
+  return { count, increment, decrement }
+}
+
+// composables/useUsers.ts
+export function useUsers() {
+  const users = ref([])
+  const fetchUsers = async () => { ... }
+  const addUser = (user) => { ... }
+  return { users, fetchUsers, addUser }
+}
+</script>
+```
+
+**替换条件渲染**:
+```vue
+<!-- ❌ 修复前：复杂条件 -->
+<template>
+  <div v-if="userRole === 'admin'">
+    <AdminPanel />
+  </div>
+  <div v-else-if="userRole === 'manager'">
+    <ManagerPanel />
+  </div>
+  <div v-else-if="userRole === 'user'">
+    <UserPanel />
+  </div>
+  <div v-else>
+    <GuestPanel />
+  </div>
+</template>
+
+<!-- ✅ 修复后：动态组件 -->
+<template>
+  <component :is="panelComponent" />
+</template>
+
+<script setup lang="ts">
+const panelComponent = computed(() => {
+  const map = {
+    admin: AdminPanel,
+    manager: ManagerPanel,
+    user: UserPanel,
+    guest: GuestPanel
+  }
+  return map[userRole.value] || GuestPanel
+})
+</script>
+```
+
+---
+
+## 🐛 Vue Bug 修复
+
+### 常见 Bug 模式
+
+**直接修改 Props**:
+```vue
+<script setup lang="ts">
+interface Props {
+  count: number
+}
+
+const props = defineProps<Props>()
+
+// ❌ Bug：直接修改 Props
+const increment = () => {
+  props.count++
+}
+
+// ✅ 修复：使用 Emits
+const emit = defineEmits<{
+  (e: 'update:count', value: number): void
+}>()
+
+const increment = () => {
+  emit('update:count', props.count + 1)
+}
+</script>
+```
+
+**响应式丢失**:
+```vue
+<script setup lang="ts">
+// ❌ Bug：解构失去响应性
+const state = reactive({ count: 0 })
+const { count } = state
+
+// ✅ 修复：使用 toRefs
+const state = reactive({ count: 0 })
+const { count } = toRefs(state)
+
+// 或使用 ref
+const count = ref(0)
+</script>
+```
+
+**v-if 和 v-for 同元素**:
+```vue
+<!-- ❌ Bug：v-if 和 v-for 同元素 -->
+<template>
+  <li v-for="user in users" v-if="user.isActive">
+    {{ user.name }}
+  </li>
+</template>
+
+<!-- ✅ 修复：使用计算属性 -->
+<template>
+  <li v-for="user in activeUsers" :key="user.id">
+    {{ user.name }}
+  </li>
+</template>
+
+<script setup lang="ts">
+const activeUsers = computed(() => 
+  users.value.filter(user => user.isActive)
+)
+</script>
+```
+
+**缺少 Key 属性**:
+```vue
+<!-- ❌ Bug：缺少 Key -->
+<template>
+  <div v-for="user in users">
+    {{ user.name }}
+  </div>
+</template>
+
+<!-- ✅ 修复：添加 Key -->
+<template>
+  <div v-for="user in users" :key="user.id">
+    {{ user.name }}
+  </div>
+</template>
+```
+
+---
+
+### Pinia 特定修复
+
+**State 直接修改**:
+```typescript
+// ❌ Bug：直接修改 State
+const userStore = useUserStore()
+userStore.currentUser.name = 'New Name'
+
+// ✅ 修复：使用 Action
+const userStore = useUserStore()
+userStore.updateUserName('New Name')
+```
+
+**Store 解构失去响应性**:
+```typescript
+// ❌ Bug：直接解构
+const userStore = useUserStore()
+const { currentUser } = userStore
+
+// ✅ 修复：使用 storeToRefs
+import { storeToRefs } from 'pinia'
+const userStore = useUserStore()
+const { currentUser } = storeToRefs(userStore)
+```
+
+---
+
+## 🚀 Vue 性能优化
+
+### 性能问题识别
+
+**不必要的组件重渲染**:
+```vue
+<script setup lang="ts">
+// ❌ 性能问题：父组件更新导致子组件重渲染
+const parentData = ref(0)
+const updateParent = () => parentData.value++
+
+// ✅ 修复：使用 shallowRef 或 memo
+import { shallowRef } from 'vue'
+const parentData = shallowRef(0)
+</script>
+```
+
+**大列表渲染**:
+```vue
+<!-- ❌ 性能问题：渲染大列表 -->
+<template>
+  <div v-for="item in largeList" :key="item.id">
+    {{ item.name }}
+  </div>
+</template>
+
+<!-- ✅ 修复：虚拟滚动 -->
+<template>
+  <RecycleScroller
+    :items="largeList"
+    :item-size="50"
+    key-field="id"
+  >
+    <template #default="{ item }">
+      <div>{{ item.name }}</div>
+    </template>
+  </RecycleScroller>
+</template>
+```
+
+**计算属性缓存**:
+```vue
+<script setup lang="ts">
+// ❌ 性能问题：方法每次渲染都执行
+const filteredUsers = () => {
+  return users.value.filter(user => user.isActive)
+}
+
+// ✅ 修复：使用计算属性
+const filteredUsers = computed(() => {
+  return users.value.filter(user => user.isActive)
+})
+</script>
+```
+
+---
+
+### 性能优化技巧
+
+**懒加载组件**:
+```vue
+<script setup lang="ts">
+// ❌ 修复前：同步加载
+import HeavyComponent from '@/components/HeavyComponent.vue'
+
+// ✅ 修复后：懒加载
+const HeavyComponent = defineAsyncComponent(
+  () => import('@/components/HeavyComponent.vue')
+)
+</script>
+```
+
+**路由懒加载**:
+```typescript
+// ❌ 修复前：同步加载路由
+const routes = [
+  {
+    path: '/dashboard',
+    component: Dashboard
+  }
+]
+
+// ✅ 修复后：懒加载路由
+const routes = [
+  {
+    path: '/dashboard',
+    component: () => import('@/views/Dashboard.vue')
+  }
+]
+```
+
+**图片懒加载**:
+```vue
+<!-- ❌ 修复前：立即加载 -->
+<img :src="largeImage" />
+
+<!-- ✅ 修复后：懒加载 -->
+<img loading="lazy" :src="largeImage" />
+```
+
+---
+
+## 🔒 Vue 安全修复
+
+### 常见安全漏洞
+
+**XSS 修复**:
+```vue
+<!-- ❌ 安全漏洞：v-html 滥用 -->
+<template>
+  <div v-html="userInput"></div>
+</template>
+
+<!-- ✅ 修复：使用文本插值 -->
+<template>
+  <div>{{ userInput }}</div>
+</template>
+
+<!-- ✅ 必须使用 v-html 时 -->
+<template>
+  <div v-html="sanitizeHtml(userInput)"></div>
+</template>
+
+<script setup lang="ts">
+import DOMPurify from 'dompurify'
+
+const sanitizeHtml = (html: string) => {
+  return DOMPurify.sanitize(html)
+}
+</script>
+```
+
+**API Token 泄露**:
+```typescript
+// ❌ 安全漏洞：Token 存储在 localStorage
+localStorage.setItem('token', token)
+
+// ✅ 修复：使用 HttpOnly Cookie
+// 后端设置 HttpOnly Cookie
+// 前端自动发送
+```
+
+**路由守卫缺失**:
+```typescript
+// ❌ 安全漏洞：缺少路由守卫
+const routes = [
+  {
+    path: '/admin',
+    component: AdminPanel
+  }
+]
+
+// ✅ 修复：添加路由守卫
+const routes = [
+  {
+    path: '/admin',
+    component: AdminPanel,
+    meta: { requiresAuth: true, requiresRole: 'admin' }
+  }
+]
+
+router.beforeEach((to, from, next) => {
+  if (to.meta.requiresAuth && !isAuthenticated) {
+    next('/login')
+  } else if (to.meta.requiresRole && !hasRole(to.meta.requiresRole)) {
+    next('/unauthorized')
+  } else {
+    next()
+  }
+})
+```
+
+---
+
+## 📋 修复检查清单
+
+### 组件重构
+
+- [ ] 组件大小合理
+- [ ] 单一职责
+- [ ] Props 定义完整
+- [ ] Emits 定义完整
+- [ ] 样式作用域
+
+### Bug 修复
+
+- [ ] 根因已定位
+- [ ] 修复方案合理
+- [ ] 测试添加完整
+- [ ] 无副作用
+- [ ] 文档已更新
+
+### 性能优化
+
+- [ ] 组件重渲染优化
+- [ ] 列表渲染优化
+- [ ] 图片懒加载
+- [ ] 路由懒加载
+- [ ] 代码分割
+
+### 安全修复
+
+- [ ] XSS 防护
+- [ ] Token 管理
+- [ ] 路由守卫
+- [ ] 输入验证
+- [ ] API 安全
+
+---
+
+## 🔧 修复工具
+
+### 自动化工具
+
+**代码质量**:
+```bash
+# ESLint 检查
+eslint src/ --ext .vue,.ts
+
+# Prettier 格式化
+prettier --write src/
+
+# Vue TypeScript 检查
+vue-tsc --noEmit
+
+# 类型检查
+tsc --noEmit
+```
+
+**自动修复**:
+```bash
+# ESLint 自动修复
+eslint src/ --ext .vue,.ts --fix
+
+# Prettier 格式化
+prettier --write src/
+```
+
+---
+
+### CI/CD 集成
+
+**GitHub Actions**:
+```yaml
+name: Code Quality
+on: [pull_request]
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run linters
+        run: |
+          npm run lint
+          npm run type-check
+```
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[Vue.js Style Guide](https://vuejs.org/style-guide/)** - Vue 官方风格指南
+- **[Google TypeScript Style Guide](https://google.github.io/styleguide/tsguide.html)** - Google TypeScript 规范
+- **[Microsoft Vue Coding Guidelines](https://github.com/Microsoft/TypeScript/wiki/Coding-guidelines)** - Microsoft TypeScript 指南
+
+### 学习资源
+
+- **[Vue.js Best Practices](https://vuejs.org/guide/best-practices/)** - Vue 最佳实践
+- **[Refactoring Vue](https://www.refactoringvue.com/)** - Vue 重构
+- **[Pinia Documentation](https://pinia.vuejs.org/)** - Pinia 文档
+
+### 工具文档
+
+- **[ESLint Vue Plugin](https://eslint.vuejs.org/)** - ESLint Vue 插件
+- **[Volar Documentation](https://volarjs.dev/)** - Volar 文档
+- **[vue-tsc Documentation](https://github.com/vuejs/language-tools/tree/master/packages/vue-tsc)** - vue-tsc 文档
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，基于 Google/Microsoft 最佳实践 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🟡 中（核心技能）

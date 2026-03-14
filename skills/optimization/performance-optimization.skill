@@ -1,0 +1,484 @@
+# Skill: 性能优化
+
+> 基于 Google、Microsoft 最佳实践的性能优化技能
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🔴 高（核心技能）
+
+---
+
+## 📋 前置技能
+
+- ✅ [architecture-principles.skill](../architecture-principles.skill) - 架构设计原则
+- ✅ [backend-architecture.skill](../backend-architecture.skill) - 后端架构设计
+- ✅ [frontend-architecture.skill](../frontend-architecture.skill) - 前端架构设计
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[Google Web Performance](https://web.dev/performance/)** - Google Web 性能
+- **[Microsoft Performance Best Practices](https://docs.microsoft.com/en-us/azure/architecture/best-practices/performance)** - Microsoft 性能最佳实践
+- **[Web Vitals](https://web.dev/vitals/)** - Web 核心指标
+- **[High Performance Browser Networking](https://hpbn.co/)** - 高性能浏览器网络
+
+### 行业最佳实践
+
+- **Performance Budget** - 性能预算
+- **Performance Monitoring** - 性能监控
+- **Load Testing** - 负载测试
+- **Profiling** - 性能分析
+
+---
+
+## 📊 性能分析方法
+
+### 性能指标
+
+```markdown
+### Web 性能指标
+- LCP (Largest Contentful Paint): < 2.5s
+- FID (First Input Delay): < 100ms
+- CLS (Cumulative Layout Shift): < 0.1
+- TTFB (Time to First Byte): < 600ms
+
+### API 性能指标
+- 响应时间：P50 < 100ms, P95 < 500ms, P99 < 1s
+- 吞吐量：requests/second
+- 错误率：< 0.1%
+- 可用性：> 99.9%
+
+### 数据库性能指标
+- 查询时间：< 10ms
+- 连接数：< 80% 池大小
+- 缓存命中率：> 90%
+- 慢查询数：< 1/分钟
+```
+
+### 性能分析工具
+
+```python
+# Python 性能分析
+import cProfile
+import pstats
+
+# 代码级分析
+profiler = cProfile.Profile()
+profiler.enable()
+
+# 运行代码
+process_data()
+
+profiler.disable()
+stats = pstats.Stats(profiler)
+stats.sort_stats('cumulative')
+stats.print_stats(10)
+
+# 内存分析
+from memory_profiler import profile
+
+@profile
+def process_data():
+    data = []
+    for i in range(1000000):
+        data.append(i * 2)
+    return data
+
+# 运行：python -m memory_profiler script.py
+```
+
+```javascript
+// 前端性能分析
+// Chrome DevTools Performance
+// 1. 打开 DevTools
+// 2. Performance 标签
+// 3. 录制页面加载
+// 4. 分析火焰图
+
+// Lighthouse
+// npm install -g lighthouse
+// lighthouse https://example.com --view
+```
+
+---
+
+## 🚀 前端性能优化
+
+### 加载性能
+
+```vue
+<!-- 代码分割 -->
+<script setup lang="ts">
+// 懒加载组件
+const HeavyComponent = defineAsyncComponent(
+  () => import('@/components/HeavyComponent.vue')
+)
+
+// 路由懒加载
+const routes = [
+  {
+    path: '/dashboard',
+    component: () => import('@/views/DashboardView.vue')
+  }
+]
+</script>
+
+<!-- 图片懒加载 -->
+<template>
+  <img loading="lazy" :src="image" :alt="alt" />
+</template>
+
+<!-- 预加载关键资源 -->
+<template>
+  <link rel="preload" href="/fonts/main.woff2" as="font" crossorigin />
+  <link rel="prefetch" href="/api/data" as="fetch" />
+</template>
+```
+
+### 渲染性能
+
+```vue
+<script setup lang="ts">
+// 使用计算属性缓存
+const filteredItems = computed(() => {
+  return items.value.filter(item => item.active)
+})
+
+// 使用 v-once 静态内容
+<div v-once>{{ staticContent }}</div>
+
+// 使用 v-memo（Vue 3.2+）
+<div v-memo="[valueA, valueB]">
+  {{ valueA }} {{ valueB }}
+</div>
+
+// 列表渲染优化
+<template>
+  <div v-for="item in items" :key="item.id">
+    {{ item.name }}
+  </div>
+</template>
+```
+
+### 包体积优化
+
+```javascript
+// vite.config.ts
+export default defineConfig({
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['vue', 'vue-router', 'pinia'],
+          utils: ['lodash-es', 'dayjs']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 500
+  }
+})
+
+// 按需导入
+// ❌ 导入整个 lodash
+import _ from 'lodash'
+
+// ✅ 按需导入
+import debounce from 'lodash-es/debounce'
+```
+
+---
+
+## ⚡ 后端性能优化
+
+### 数据库优化
+
+```python
+# ❌ N+1 查询
+users = db.query(User).all()
+for user in users:
+    orders = db.query(Order).filter(Order.user_id == user.id).all()
+
+# ✅ 使用 JOIN
+from sqlalchemy.orm import joinedload
+
+users = db.query(User).options(
+    joinedload(User.orders)
+).all()
+
+# ❌ 慢查询
+SELECT * FROM orders WHERE YEAR(created_at) = 2026
+
+# ✅ 使用索引
+SELECT * FROM orders 
+WHERE created_at >= '2026-01-01' 
+  AND created_at < '2027-01-01'
+
+# 创建索引
+CREATE INDEX idx_orders_created_at ON orders(created_at)
+```
+
+### 缓存策略
+
+```python
+# Redis 缓存
+import redis
+from functools import wraps
+
+class Cache:
+    def __init__(self, redis_url):
+        self.redis = redis.from_url(redis_url)
+    
+    def cache(self, key_prefix, expire=300):
+        def decorator(func):
+            @wraps(func)
+            async def wrapper(*args, **kwargs):
+                key = f"{key_prefix}:{args}:{kwargs}"
+                cached = await self.redis.get(key)
+                if cached:
+                    return json.loads(cached)
+                
+                result = await func(*args, **kwargs)
+                await self.redis.setex(key, expire, json.dumps(result))
+                return result
+            return wrapper
+        return decorator
+
+# 使用
+cache = Cache(settings.REDIS_URL)
+
+@cache.cache("user", expire=600)
+async def get_user(user_id: int):
+    return await db.query(User).get(user_id)
+
+# 缓存模式
+# 1. Cache-Aside（旁路缓存）
+def get_data(key):
+    data = cache.get(key)
+    if not data:
+        data = db.query(key)
+        cache.set(key, data)
+    return data
+
+# 2. Read-Through（读穿透）
+# 3. Write-Through（写穿透）
+# 4. Write-Back（写回）
+```
+
+### 异步处理
+
+```python
+# 使用 asyncio
+import asyncio
+
+async def fetch_data():
+    # 并发请求
+    results = await asyncio.gather(
+        fetch_user_data(),
+        fetch_order_data(),
+        fetch_product_data()
+    )
+    return results
+
+# 使用 Celery 后台任务
+from celery import Celery
+
+celery = Celery('tasks', broker='redis://localhost:6379/0')
+
+@celery.task
+def send_email(to, subject, body):
+    # 发送邮件
+    ...
+
+# 调用
+send_email.delay('user@example.com', 'Welcome', 'Hello!')
+```
+
+---
+
+## 📦 缓存架构
+
+### 缓存层级
+
+```markdown
+### L1: 浏览器缓存
+- Service Worker
+- LocalStorage
+- SessionStorage
+- IndexedDB
+
+### L2: CDN 缓存
+- 静态资源
+- API 响应
+- 边缘计算
+
+### L3: 应用缓存
+- 内存缓存
+- Redis
+- Memcached
+
+### L4: 数据库缓存
+- 查询缓存
+- 结果缓存
+- 索引缓存
+```
+
+### 缓存失效策略
+
+```python
+# 基于时间的失效
+cache.set(key, value, expire=300)  # 5 分钟
+
+# 基于事件的失效
+def update_user(user_id, data):
+    db.update(user_id, data)
+    cache.delete(f"user:{user_id}")
+
+# 基于版本的失效
+version = cache.get("user:version")
+cache.set(f"user:{user_id}:v{version}", data)
+
+# 缓存预热
+def warm_up_cache():
+    popular_users = db.get_popular_users()
+    for user in popular_users:
+        cache.set(f"user:{user.id}", user)
+```
+
+---
+
+## 🔍 性能监控
+
+### 监控指标
+
+```python
+# Prometheus 指标
+from prometheus_client import Counter, Histogram, Gauge
+
+# 请求计数器
+request_counter = Counter(
+    'http_requests_total',
+    'Total HTTP requests',
+    ['method', 'endpoint', 'status']
+)
+
+# 响应时间直方图
+request_duration = Histogram(
+    'http_request_duration_seconds',
+    'HTTP request duration',
+    ['method', 'endpoint'],
+    buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 5.0]
+)
+
+# 活跃连接数
+active_connections = Gauge(
+    'active_connections',
+    'Number of active connections'
+)
+
+# 使用
+@request_duration.labels(method='GET', endpoint='/users').time():
+    users = get_users()
+    request_counter.labels(method='GET', endpoint='/users', status=200).inc()
+```
+
+### 性能基准测试
+
+```python
+# locust 负载测试
+from locust import HttpUser, task, between
+
+class UserBehavior(HttpUser):
+    wait_time = between(1, 3)
+    
+    @task(3)
+    def get_users(self):
+        self.client.get("/api/v1/users")
+    
+    @task(1)
+    def create_user(self):
+        self.client.post("/api/v1/users", json={
+            "email": "test@example.com",
+            "name": "Test"
+        })
+
+# 运行：locust -f locustfile.py --host=http://localhost:8000
+```
+
+---
+
+## 📋 性能优化检查清单
+
+### 前端性能
+
+- [ ] 代码分割配置
+- [ ] 图片懒加载
+- [ ] 资源预加载
+- [ ] 缓存策略配置
+- [ ] 包体积优化
+- [ ] 渲染性能优化
+- [ ] 网络请求优化
+
+### 后端性能
+
+- [ ] 数据库查询优化
+- [ ] 索引配置合理
+- [ ] 缓存策略配置
+- [ ] 异步处理使用
+- [ ] 连接池配置
+- [ ] 慢查询监控
+
+### 缓存架构
+
+- [ ] 缓存层级清晰
+- [ ] 缓存键规范
+- [ ] 失效策略明确
+- [ ] 缓存预热配置
+- [ ] 缓存监控配置
+
+### 性能监控
+
+- [ ] 性能指标定义
+- [ ] 监控工具配置
+- [ ] 告警阈值设置
+- [ ] 基准测试定期
+- [ ] 性能报告定期
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[Google Web Performance](https://web.dev/performance/)** - Google Web 性能
+- **[Microsoft Performance Best Practices](https://docs.microsoft.com/en-us/azure/architecture/best-practices/performance)** - Microsoft 性能最佳实践
+- **[Web Vitals](https://web.dev/vitals/)** - Web 核心指标
+- **[High Performance Browser Networking](https://hpbn.co/)** - 高性能浏览器网络
+
+### 学习资源
+
+- **[Web Performance 101](https://www.udacity.com/course/website-performance-optimization--ud884)** - Web 性能优化课程
+- **[Python Performance Tips](https://wiki.python.org/moin/PythonSpeed/PerformanceTips)** - Python 性能技巧
+
+### 工具
+
+- **[Lighthouse](https://developers.google.com/web/tools/lighthouse)** - Web 性能审计
+- **[Chrome DevTools](https://developer.chrome.com/docs/devtools/)** - 浏览器开发工具
+- **[py-spy](https://github.com/benfred/py-spy)** - Python 性能分析
+- **[locust](https://locust.io/)** - 负载测试工具
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，基于 Google/Microsoft 性能最佳实践 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🔴 高（核心技能）

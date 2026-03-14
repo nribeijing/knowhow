@@ -1,0 +1,592 @@
+# Skill: API 设计
+
+> 基于 RESTful、GraphQL、gRPC 最佳实践的 API 设计技能
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🔴 高（核心技能）
+
+---
+
+## 📋 前置技能
+
+- ✅ [architecture-principles.skill](../architecture-principles.skill) - 架构设计原则
+- ✅ [backend-architecture.skill](../backend-architecture.skill) - 后端架构设计
+- ✅ [api-parameters.rule](../rules/api-parameters.rule) - API 参数设计规范
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[Richardson Maturity Model](https://martinfowler.com/articles/richardsonMaturityModel.html)** - RESTful 成熟度模型
+- **[OpenAPI Specification](https://swagger.io/specification/)** - OpenAPI 规范
+- **[Google API Design Guide](https://cloud.google.com/apis/design)** - Google API 设计指南
+- **[Microsoft REST API Guidelines](https://github.com/microsoft/api-guidelines)** - Microsoft REST API 指南
+
+### 行业最佳实践
+
+- **RESTful API Design** - RESTful API 设计
+- **GraphQL API Design** - GraphQL API 设计
+- **gRPC Service Design** - gRPC 服务设计
+- **API First Design** - API 优先设计
+
+---
+
+## 🏛️ RESTful API 设计
+
+### 资源设计
+
+```markdown
+### 资源命名
+- 使用名词复数：/users, /orders
+- 使用小写字母：/user-profiles
+- 使用连字符：/user-profiles
+- 避免动词：❌ /getUsers
+
+### 资源层级
+- 扁平结构：/users, /orders
+- 嵌套结构：/users/{id}/orders
+- 避免过深嵌套：❌ /users/{id}/orders/{id}/items/{id}
+
+### 资源关系
+- 一对一：/users/{id}/profile
+- 一对多：/users/{id}/orders
+- 多对多：/users/{id}/roles
+```
+
+### HTTP 方法使用
+
+```markdown
+### GET - 获取资源
+- 幂等操作
+- 无副作用
+- 可缓存
+- 示例：GET /users/{id}
+
+### POST - 创建资源
+- 非幂等操作
+- 有副作用
+- 不可缓存
+- 示例：POST /users
+
+### PUT - 全量更新
+- 幂等操作
+- 有副作用
+- 不可缓存
+- 示例：PUT /users/{id}
+
+### PATCH - 部分更新
+- 幂等操作（应该）
+- 有副作用
+- 不可缓存
+- 示例：PATCH /users/{id}
+
+### DELETE - 删除资源
+- 幂等操作
+- 有副作用
+- 不可缓存
+- 示例：DELETE /users/{id}
+```
+
+### 状态码使用
+
+```python
+# 2xx 成功
+200 OK          # 成功
+201 Created     # 创建成功
+204 No Content  # 成功但无返回内容
+
+# 4xx 客户端错误
+400 Bad Request       # 请求参数错误
+401 Unauthorized      # 未认证
+403 Forbidden         # 无权限
+404 Not Found         # 资源不存在
+409 Conflict          # 资源冲突
+422 Unprocessable Entity  # 数据验证失败
+429 Too Many Requests # 请求限流
+
+# 5xx 服务器错误
+500 Internal Server Error  # 服务器内部错误
+502 Bad Gateway            # 网关错误
+503 Service Unavailable    # 服务不可用
+```
+
+---
+
+## 🔗 GraphQL API 设计
+
+### Schema 设计
+
+```graphql
+# ✅ 好的 Schema 设计
+type User {
+  id: ID!
+  email: String!
+  name: String!
+  orders: [Order!]!
+  createdAt: DateTime!
+}
+
+type Order {
+  id: ID!
+  user: User!
+  items: [OrderItem!]!
+  totalAmount: Float!
+  status: OrderStatus!
+  createdAt: DateTime!
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+# 查询
+type Query {
+  user(id: ID!): User
+  users(limit: Int, offset: Int): [User!]!
+  order(id: ID!): Order
+}
+
+# 变更
+type Mutation {
+  createUser(input: CreateUserInput!): User!
+  updateUser(id: ID!, input: UpdateUserInput!): User!
+  deleteUser(id: ID!): Boolean!
+}
+
+# 输入类型
+input CreateUserInput {
+  email: String!
+  name: String!
+  password: String!
+}
+
+input UpdateUserInput {
+  email: String
+  name: String
+}
+```
+
+### 最佳实践
+
+```markdown
+### 命名规范
+- 使用驼峰命名：userId, createdAt
+- 类型使用 PascalCase：User, Order
+- 枚举使用大写：OrderStatus
+
+### 字段设计
+- 避免过深嵌套
+- 使用分页（cursor-based）
+- 提供字段过滤
+- 支持字段选择
+
+### 错误处理
+- 使用统一错误格式
+- 包含错误码
+- 包含错误路径
+- 包含错误详情
+```
+
+---
+
+## 🔌 gRPC 服务设计
+
+### Protocol Buffers 设计
+
+```protobuf
+// ✅ 好的服务设计
+syntax = "proto3";
+
+package user;
+
+// 用户服务
+service UserService {
+  rpc GetUser(GetUserRequest) returns (UserResponse);
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+  rpc CreateUser(CreateUserRequest) returns (UserResponse);
+  rpc UpdateUser(UpdateUserRequest) returns (UserResponse);
+  rpc DeleteUser(DeleteUserRequest) returns (Empty);
+}
+
+// 消息定义
+message User {
+  string id = 1;
+  string email = 2;
+  string name = 3;
+  repeated Order orders = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+message GetUserRequest {
+  string id = 1;
+}
+
+message UserResponse {
+  User user = 1;
+}
+
+message ListUsersRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+message ListUsersResponse {
+  repeated User users = 1;
+  int32 total = 2;
+}
+
+message CreateUserRequest {
+  string email = 1;
+  string name = 2;
+  string password = 3;
+}
+
+message UpdateUserRequest {
+  string id = 1;
+  string email = 2;
+  string name = 3;
+}
+
+message DeleteUserRequest {
+  string id = 1;
+}
+
+message Empty {}
+```
+
+### 最佳实践
+
+```markdown
+### 服务设计
+- 单一职责服务
+- 清晰的 RPC 方法
+- 一致的命名规范
+- 版本控制（包名）
+
+### 消息设计
+- 使用有意义的字段名
+- 避免使用 optional（proto3 默认）
+- 使用枚举而非字符串
+- 使用时间戳类型
+
+### 错误处理
+- 使用标准状态码
+- 包含错误详情
+- 使用错误元数据
+```
+
+---
+
+## 📝 API 文档化
+
+### OpenAPI/Swagger
+
+```yaml
+openapi: 3.0.0
+info:
+  title: User API
+  description: 用户管理 API
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: https://api.example.com/v1
+    description: 生产环境
+  - url: https://staging-api.example.com/v1
+    description: 预发布环境
+
+paths:
+  /users:
+    get:
+      summary: 获取用户列表
+      description: 分页获取用户列表
+      operationId: listUsers
+      tags:
+        - Users
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 10
+            maximum: 100
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+                  total:
+                    type: integer
+        '401':
+          description: 未认证
+        '403':
+          description: 无权限
+    
+    post:
+      summary: 创建用户
+      operationId: createUser
+      tags:
+        - Users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserInput'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: 请求参数错误
+        '409':
+          description: 用户已存在
+
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    
+    CreateUserInput:
+      type: object
+      required:
+        - email
+        - name
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+  
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+```
+
+---
+
+## 🔄 API 版本管理
+
+### 版本策略
+
+```markdown
+### URL 路径版本化（推荐）
+GET /api/v1/users
+GET /api/v2/users
+
+### Header 版本化
+Accept: application/vnd.example.v1+json
+Accept: application/vnd.example.v2+json
+
+### 查询参数版本化
+GET /users?version=1
+GET /users?version=2
+```
+
+### 版本演进策略
+
+```markdown
+### 向后兼容变更
+- 添加可选字段
+- 添加新端点
+- 添加新枚举值
+- 不破坏现有客户端
+
+### 破坏性变更
+- 删除字段
+- 修改字段类型
+- 删除端点
+- 需要新版本号
+
+### 弃用策略
+1. 标记为 deprecated
+2. 提供迁移指南
+3. 设置弃用时间表
+4. 通知所有用户
+5. 到期后移除
+```
+
+---
+
+## 🔒 API 安全设计
+
+### 认证机制
+
+```python
+# JWT Token 认证
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+security = HTTPBearer()
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    token = credentials.credentials
+    payload = decode_jwt_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Token 无效")
+    return payload
+
+# API Key 认证
+async def get_api_key(
+    x_api_key: str = Header(..., alias="X-API-Key")
+):
+    api_key = await validate_api_key(x_api_key)
+    if not api_key:
+        raise HTTPException(status_code=401, detail="API Key 无效")
+    return api_key
+```
+
+### 速率限制
+
+```python
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
+
+@router.get("/users")
+@limiter.limit("100/minute")
+async def list_users(request: Request):
+    ...
+
+@router.post("/users")
+@limiter.limit("10/minute")
+async def create_user(request: Request, user_in: UserCreate):
+    ...
+```
+
+---
+
+## 📋 API 设计检查清单
+
+### 资源设计
+
+- [ ] 使用名词复数
+- [ ] 使用小写字母
+- [ ] 使用连字符
+- [ ] 避免过深嵌套
+- [ ] 资源关系清晰
+
+### HTTP 方法
+
+- [ ] GET 用于获取
+- [ ] POST 用于创建
+- [ ] PUT 用于全量更新
+- [ ] PATCH 用于部分更新
+- [ ] DELETE 用于删除
+
+### 状态码
+
+- [ ] 使用合适状态码
+- [ ] 2xx 成功响应
+- [ ] 4xx 客户端错误
+- [ ] 5xx 服务器错误
+
+### 文档化
+
+- [ ] OpenAPI 规范完整
+- [ ] 示例代码提供
+- [ ] 错误码说明
+- [ ] 认证说明
+
+### 版本管理
+
+- [ ] 版本策略明确
+- [ ] 向后兼容
+- [ ] 弃用流程
+- [ ] 迁移指南
+
+### 安全性
+
+- [ ] 认证机制完善
+- [ ] 授权检查完整
+- [ ] 速率限制配置
+- [ ] 输入验证严格
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[Richardson Maturity Model](https://martinfowler.com/articles/richardsonMaturityModel.html)** - RESTful 成熟度模型
+- **[OpenAPI Specification](https://swagger.io/specification/)** - OpenAPI 规范
+- **[Google API Design Guide](https://cloud.google.com/apis/design)** - Google API 设计指南
+- **[Microsoft REST API Guidelines](https://github.com/microsoft/api-guidelines)** - Microsoft REST API 指南
+
+### 学习资源
+
+- **[REST API Tutorial](https://restfulapi.net/)** - REST API 教程
+- **[GraphQL Documentation](https://graphql.org/)** - GraphQL 文档
+- **[gRPC Documentation](https://grpc.io/docs/)** - gRPC 文档
+
+### 工具
+
+- **[Swagger Editor](https://editor.swagger.io/)** - OpenAPI 编辑器
+- **[Postman](https://www.postman.com/)** - API 测试工具
+- **[Insomnia](https://insomnia.rest/)** - API 客户端
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，基于 RESTful/GraphQL/gRPC 最佳实践 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🔴 高（核心技能）

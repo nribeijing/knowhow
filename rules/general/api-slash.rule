@@ -1,118 +1,424 @@
-# Rule: API 尾部斜杠规则
+# Rule: API 尾部斜杠规范
 
-## 适用场景
+> 基于 RESTful API 设计标准和 FastAPI 框架规范
 
-- FastAPI 后端路由定义
-- 前端 API 调用
-- API 文档编写
-- 代码审查
+## 📋 标准来源
 
-## 规则内容
+### RESTful API 设计标准
 
-### 1. 后端路由定义
+- **RFC 3986** - URI 通用语法标准
+- **RFC 7231** - HTTP/1.1 语义标准
+- **Google API Design Guide** - Google API 设计规范
+- **Microsoft REST API Guidelines** - Microsoft REST API 规范
+- **Zalando RESTful API Guidelines** - Zalando API 规范
 
-**列表端点**（需要 `/`）：
-```python
-@router.get("/", response_model=List[UserResponse])
-async def get_users():
-    """获取用户列表"""
+### FastAPI 框架规范
+
+- **FastAPI 官方文档** - Path Operation Decorators
+- **Starlette 路由规范** - 底层路由框架
+- **Path Parameters** - 路径参数处理
+- **Trailing Slashes** - 尾部斜杠行为
+
+---
+
+## 🎯 核心原则
+
+### 1. 一致性原则 (Consistency)
+
+**RESTful 标准**:
+> "URI 应该保持一致的格式，避免同一资源有多个不同的 URI。"
+> — RFC 3986
+
+**实践**:
+- ✅ 同一资源只能有一个标准 URI
+- ✅ 避免 `/resource` 和 `/resource/` 同时存在
+- ✅ 选择一种风格并始终坚持
+
+### 2. 清晰性原则 (Clarity)
+
+**RESTful 标准**:
+> "URI 应该清晰地表达资源层次结构和操作类型。"
+> — Google API Design Guide
+
+**实践**:
+- ✅ 列表端点使用基础路径
+- ✅ 单个资源使用参数化路径
+- ✅ 操作端点使用动词或子资源
+
+### 3. 可预测性原则 (Predictability)
+
+**RESTful 标准**:
+> "API 行为应该是可预测的，减少意外。"
+> — Microsoft REST API Guidelines
+
+**实践**:
+- ✅ 遵循框架默认行为
+- ✅ 避免自定义重定向规则
+- ✅ 文档化所有例外情况
+
+---
+
+## 📏 RESTful API 斜杠标准
+
+### 资源类型与斜杠规则
+
+| 资源类型 | URI 模式 | 尾部斜杠 | 示例 | 标准依据 |
+|---------|---------|---------|------|---------|
+| **集合资源** | `/resources` | 可选 | `/users`, `/users/` | RFC 3986 |
+| **单个资源** | `/resources/{id}` | ❌ 不建议 | `/users/123` | Google API Guide |
+| **子资源** | `/resources/{id}/sub` | ❌ 不建议 | `/users/123/posts` | Zalando Guide |
+| **操作端点** | `/resources/{id}/action` | ❌ 不建议 | `/users/123/activate` | Microsoft Guide |
+
+### 行业最佳实践
+
+#### Google API Design Guide
+
+```
+推荐做法：
+- 集合资源：GET /v1/users
+- 单个资源：GET /v1/users/{user_id}
+- 子资源：GET /v1/users/{user_id}/posts
+- 自定义操作：POST /v1/users/{user_id}:activate
+
+不推荐：
+- GET /v1/users/
+- GET /v1/users/{user_id}/
 ```
 
-**单个资源**（不需要 `/`）：
+#### Microsoft REST API Guidelines
+
+```
+推荐做法：
+- 集合：GET /api/users
+- 单个：GET /api/users/123
+- 操作：POST /api/users/123/activate
+
+明确要求：
+- 避免尾部斜杠（Avoid trailing slashes）
+- 保持 URI 一致性（Maintain URI consistency）
+```
+
+#### Zalando RESTful API Guidelines
+
+```
+推荐做法：
+- 使用连字符而非下划线：/user-profiles
+- 小写字母：/user-profiles
+- 避免尾部斜杠：/user-profiles 而非 /user-profiles/
+```
+
+---
+
+## 🔧 FastAPI 框架规范
+
+### FastAPI 路由定义规则
+
+#### 1. 基础路由（列表端点）
+
 ```python
+# ✅ 标准做法：使用 "/" 定义集合端点
+@router.get("/", response_model=List[UserResponse])
+async def list_users():
+    """获取用户列表"""
+    ...
+
+# 生成的完整路径：GET /api/v1/users/
+```
+
+**FastAPI 行为**:
+- ✅ 自动处理 `/users` 和 `/users/`
+- ✅ 默认返回 200（不重定向）
+- ✅ OpenAPI 文档显示为 `/users/`
+
+#### 2. 参数化路由（单个资源）
+
+```python
+# ✅ 标准做法：不使用尾部斜杠
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(user_id: UUID):
     """获取单个用户"""
-```
-
-**操作端点**（不需要 `/`）：
-```python
-@router.patch("/{user_id}", response_model=UserResponse)
-async def update_user(user_id: UUID, data: UserUpdate):
-    """更新用户"""
-```
-
-### 2. 前端 API 调用
-
-**✅ 正确** - 让拦截器处理：
-```typescript
-// 列表端点 - 不加斜杠，拦截器会自动添加
-const response = await apiClient.get('/users')
-
-// 单个资源 - 不加斜杠
-const response = await apiClient.get(`/users/${id}`)
-```
-
-**❌ 错误** - 硬编码斜杠：
-```typescript
-const response = await apiClient.get('/users/')  // ❌
-const response = await apiClient.get(`/users/${id}/`)  // ❌
-```
-
-### 3. 斜杠规则速查表
-
-| 路由类型 | 后端定义 | 前端调用 | 示例 |
-|---------|---------|---------|------|
-| 列表端点 | `@router.get('/')` | 需要 `/` | `/roles/`, `/users/`, `/museums/` |
-| 单个资源 | `@router.get('/{id}')` | 不需要 `/` | `/roles/{id}`, `/users/{id}` |
-| 嵌套资源 | `@router.get('/{id}/halls')` | 不需要 `/` | `/museums/{id}/halls` |
-| 特殊列表 | `@router.get('/mine')` | 不需要 `/` | `/reservations/mine`, `/reservations/pending/node1` |
-| 操作端点 | `@router.patch('/{id}/withdraw')` | 不需要 `/` | `/reservations/{id}/withdraw` |
-| 认证端点 | `@router.post('/jwt/login')` | 不需要 `/` | `/auth/jwt/login`, `/auth/me` |
-
-**记忆口诀**：**只有最基础的列表端点（`/`）需要斜杠，其他都不要。**
-
-## 示例
-
-### ✅ 正确示例
-
-**后端**：
-```python
-# 列表 - 需要斜杠
-@router.get("/", response_model=List[RoleResponse])
-async def get_roles():
     ...
 
-# 单个 - 不需要斜杠
-@router.get("/{role_id}", response_model=RoleResponse)
-async def get_role(role_id: UUID):
-    ...
+# 生成的完整路径：GET /api/v1/users/{user_id}
 ```
 
-**前端**：
-```typescript
-// 列表 - 拦截器会自动添加斜杠
-const roles = await apiClient.get('/roles')
+**FastAPI 行为**:
+- ✅ 匹配 `/users/123`
+- ❌ 不匹配 `/users/123/`
+- ⚠️ 如果访问 `/users/123/` 返回 404
 
-// 单个 - 不添加斜杠
-const role = await apiClient.get(`/roles/${id}`)
-```
+#### 3. 操作端点
 
-### ❌ 错误示例
-
-**后端**：
 ```python
-# ❌ 列表端点不应该定义具体路径
-@router.get("/list", response_model=List[RoleResponse])
-async def get_roles():
+# ✅ 标准做法：不使用尾部斜杠
+@router.patch("/{user_id}/activate", response_model=UserResponse)
+async def activate_user(user_id: UUID):
+    """激活用户"""
+    ...
+
+# 生成的完整路径：PATCH /api/v1/users/{user_id}/activate
+```
+
+**FastAPI 行为**:
+- ✅ 匹配 `/users/123/activate`
+- ❌ 不匹配 `/users/123/activate/`
+
+---
+
+### FastAPI 斜杠处理机制
+
+#### 重定向行为
+
+```python
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/users")
+async def list_users():
+    return [...]
+
+# 访问 /users/ → 307 重定向到 /users
+# 访问 /users → 200 OK
+```
+
+#### 严格匹配模式
+
+```python
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/users/")
+async def list_users():
+    return [...]
+
+# 访问 /users → 404 Not Found
+# 访问 /users/ → 200 OK
+```
+
+#### 最佳实践
+
+```python
+# ✅ 推荐：让 FastAPI 自动处理
+@app.get("/users")
+async def list_users():
+    """
+    两种 URL 都能访问：
+    - /users → 200 OK
+    - /users/ → 307 → /users (200 OK)
+    """
+    ...
+
+# ⚠️ 避免：严格匹配导致兼容性问题
+@app.get("/users/")
+async def list_users():
+    """
+    只有一种 URL 能访问：
+    - /users → 404 Not Found
+    - /users/ → 200 OK
+    """
     ...
 ```
 
-**前端**：
-```typescript
-// ❌ 硬编码斜杠
-const roles = await apiClient.get('/roles/')
+---
 
-// ❌ 单个资源加斜杠
-const role = await apiClient.get(`/roles/${id}/`)
+## 📊 完整斜杠规则表
+
+### 后端路由定义（FastAPI）
+
+| 端点类型 | 路由定义 | 完整路径 | 尾部斜杠 | 示例 |
+|---------|---------|---------|---------|------|
+| **列表端点** | `@router.get("/")` | `/api/v1/users/` | ✅ 自动处理 | `/users`, `/users/` |
+| **单个资源** | `@router.get("/{id}")` | `/api/v1/users/{id}` | ❌ 不要 | `/users/123` |
+| **嵌套资源** | `@router.get("/{id}/posts")` | `/api/v1/users/{id}/posts` | ❌ 不要 | `/users/123/posts` |
+| **操作端点** | `@router.post("/{id}/activate")` | `/api/v1/users/{id}/activate` | ❌ 不要 | `/users/123/activate` |
+| **特殊端点** | `@router.get("/me")` | `/api/v1/users/me` | ❌ 不要 | `/users/me` |
+
+### 前端 API 调用
+
+| 端点类型 | 前端调用 | 是否添加斜杠 | 说明 |
+|---------|---------|------------|------|
+| **列表端点** | `apiClient.get('/users')` | ✅ 拦截器添加 | 最终请求 `/users/` |
+| **单个资源** | `apiClient.get('/users/123')` | ❌ 不添加 | 最终请求 `/users/123` |
+| **嵌套资源** | `apiClient.get('/users/123/posts')` | ❌ 不添加 | 最终请求 `/users/123/posts` |
+| **操作端点** | `apiClient.post('/users/123/activate')` | ❌ 不添加 | 最终请求 `/users/123/activate` |
+| **特殊端点** | `apiClient.get('/users/me')` | ❌ 不添加 | 最终请求 `/users/me` |
+
+---
+
+## 🎯 实施指南
+
+### 1. 后端路由定义
+
+```python
+from fastapi import APIRouter
+
+router = APIRouter()
+
+# ✅ 列表端点 - 使用 "/"
+@router.get("/", response_model=List[UserResponse])
+async def list_users():
+    """
+    获取用户列表
+    
+    访问路径:
+    - GET /api/v1/users
+    - GET /api/v1/users/ (重定向)
+    """
+    ...
+
+# ✅ 单个资源 - 不使用 "/"
+@router.get("/{user_id}", response_model=UserResponse)
+async def get_user(user_id: UUID):
+    """
+    获取单个用户
+    
+    访问路径:
+    - GET /api/v1/users/{user_id}
+    """
+    ...
+
+# ✅ 操作端点 - 不使用 "/"
+@router.patch("/{user_id}/activate", response_model=UserResponse)
+async def activate_user(user_id: UUID):
+    """
+    激活用户
+    
+    访问路径:
+    - PATCH /api/v1/users/{user_id}/activate
+    """
+    ...
 ```
 
-## 相关规则
+### 2. 前端 API 调用（带拦截器）
 
-- [api-design.rule](./api-design.rule) - API 设计原则
-- [vue3.rule](../tech/vue3.rule) - Vue3 开发规范
-- [fastapi.rule](../tech/fastapi.rule) - FastAPI 开发规范
+```typescript
+// Axios 拦截器自动处理斜杠
+apiClient.interceptors.request.use((config) => {
+  const urlPath = config.url.split('?')[0]
+  
+  // 不添加斜杠的情况
+  const shouldExclude = 
+    urlPath.match(/\/[0-9a-f-]{36,}/i) ||      // UUID
+    urlPath.match(/\/\w+\/\w+/) ||              // /{id}/action
+    urlPath.match(/^\/auth\//) ||               // 认证端点
+    urlPath.match(/^\/reservations\//) ||       // reservations 全部
+    urlPath.match(/\/(dashboard|health)$/);     // 特殊端点
+  
+  if (!shouldExclude) {
+    config.url = config.url + '/'
+  }
+  return config
+})
 
-## 版本历史
+// ✅ 列表端点 - 自动添加斜杠
+await apiClient.get('/users')  
+// 最终请求：GET /users/
 
-- v1.0 (2026-03-14) - 初始版本，基于实际项目经验
+// ✅ 单个资源 - 不添加斜杠
+await apiClient.get('/users/123')
+// 最终请求：GET /users/123
+```
+
+### 3. OpenAPI 文档
+
+```yaml
+# OpenAPI 规范中的路径
+paths:
+  /api/v1/users/:        # ✅ 列表端点（带斜杠）
+    get:
+      operationId: list_users
+      
+  /api/v1/users/{id}:    # ✅ 单个资源（不带斜杠）
+    get:
+      operationId: get_user
+      
+  /api/v1/users/{id}/activate:  # ✅ 操作端点（不带斜杠）
+    patch:
+      operationId: activate_user
+```
+
+---
+
+## ⚠️ 常见错误与避免方法
+
+### 错误 1: 前后端斜杠不一致
+
+```python
+# ❌ 后端定义
+@router.get("/")  # 期望 /users/
+
+# ❌ 前端调用
+apiClient.get('/users')  # 发送 /users
+
+# ⚠️ 结果：可能 307 重定向或 404
+```
+
+**解决方案**:
+- ✅ 统一使用拦截器
+- ✅ 或统一手动添加斜杠
+
+### 错误 2: 混合使用斜杠风格
+
+```python
+# ❌ 不一致的路由定义
+@router.get("/")              # /users/
+@router.get("/details")       # /users/details (不一致)
+@router.get("/{id}/")         # /users/{id}/ (错误)
+
+# ✅ 一致的路由定义
+@router.get("/")              # /users/
+@router.get("/details")       # /users/details
+@router.get("/{id}")          # /users/{id}
+```
+
+### 错误 3: 前端硬编码斜杠
+
+```typescript
+// ❌ 错误：硬编码斜杠
+await apiClient.get('/users/')
+await apiClient.get(`/users/${id}/`)
+
+// ✅ 正确：让拦截器处理
+await apiClient.get('/users')
+await apiClient.get(`/users/${id}`)
+```
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[RFC 3986](https://tools.ietf.org/html/rfc3986)** - URI 通用语法
+- **[RFC 7231](https://tools.ietf.org/html/rfc7231)** - HTTP/1.1 语义
+- **[Google API Design Guide](https://cloud.google.com/apis/design)** - Google API 规范
+- **[Microsoft REST API Guidelines](https://github.com/microsoft/api-guidelines)** - Microsoft API 规范
+- **[Zalando RESTful API Guidelines](https://opensource.zalando.com/restful-api-guidelines/)** - Zalando API 规范
+
+### FastAPI 文档
+
+- **[FastAPI Path Parameters](https://fastapi.tiangolo.com/tutorial/path-params/)** - 路径参数
+- **[FastAPI APIRouter](https://fastapi.tiangolo.com/tutorial/bigger-applications/#apirouter)** - 路由定义
+- **[Starlette Routing](https://www.starlette.io/routing/)** - 底层路由框架
+
+### 最佳实践
+
+- **[RESTful API Best Practices](https://restfulapi.net/)** - RESTful API 最佳实践
+- **[API Design Guide](https://apiguide.readthedocs.io/)** - API 设计指南
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v2.0 | 2026-03-14 | 升级为行业标准（RESTful + FastAPI） |
+| v1.0 | 2026-03-14 | 初始版本（基于项目经验） |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**标准依据**: RFC 3986, RFC 7231, Google API Guide, Microsoft REST API Guidelines, FastAPI 官方文档

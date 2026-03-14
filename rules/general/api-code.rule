@@ -1,0 +1,698 @@
+# Rule: API 状态码设计规范
+
+> 基于 RESTful API 标准和行业最佳实践
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**默认方案**: 方案一（只使用 HTTP 状态码）
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[RFC 7231](https://tools.ietf.org/html/rfc7231)** - HTTP/1.1 语义和状态码
+- **[RFC 7807](https://tools.ietf.org/html/rfc7807)** - HTTP API 问题详情
+- **[Google API Design Guide](https://cloud.google.com/apis/design/errors)** - Google 错误处理规范
+- **[Microsoft REST API Guidelines](https://github.com/microsoft/api-guidelines/blob/master/v1.2/Guidelines.md)** - Microsoft REST API 规范
+- **[Zalando RESTful API Guidelines](https://opensource.zalando.com/restful-api-guidelines/#errors)** - Zalando API 规范
+
+### 行业实践
+
+- **Stripe API** - 错误类型化设计
+- **GitHub API** - 结构化错误响应
+- **JSON:API** - 标准化错误格式
+
+---
+
+## 🎯 方案选择
+
+本项目默认使用 **方案一：只使用 HTTP 状态码**
+
+| 方案 | 复杂度 | 标准化程度 | 推荐场景 | 本项目 |
+|------|--------|-----------|---------|--------|
+| **方案一** | 低 | 高 | RESTful API、前后端分离 | ✅ 默认 |
+| **方案二** | 中 | 中 | 复杂业务系统、多系统集成 | ⚠️ 备选 |
+
+---
+
+## 📏 方案一：只使用 HTTP 状态码（默认）
+
+### 核心原则
+
+> **使用标准 HTTP 状态码表达请求结果，业务错误信息通过响应体传达。**
+
+### 响应格式
+
+#### 成功响应
+
+```json
+{
+  "data": {
+    "id": "123",
+    "name": "user",
+    "email": "user@example.com"
+  },
+  "message": "success",
+  "timestamp": "2026-03-14T10:30:00Z"
+}
+```
+
+**HTTP 状态码**: `200 OK`
+
+#### 失败响应
+
+```json
+{
+  "error": {
+    "code": "invalid_parameter",
+    "message": "参数错误",
+    "details": [
+      {
+        "field": "email",
+        "message": "邮箱格式不正确"
+      }
+    ]
+  },
+  "timestamp": "2026-03-14T10:30:00Z",
+  "path": "/api/v1/users"
+}
+```
+
+**HTTP 状态码**: `400 Bad Request`
+
+### HTTP 状态码使用规范
+
+#### 2xx 成功
+
+| 状态码 | 说明 | 使用场景 |
+|--------|------|---------|
+| **200 OK** | 请求成功 | GET, PUT, PATCH 成功 |
+| **201 Created** | 资源创建成功 | POST 创建资源 |
+| **204 No Content** | 成功但无返回内容 | DELETE 成功 |
+
+#### 4xx 客户端错误
+
+| 状态码 | 说明 | 使用场景 | 错误码 |
+|--------|------|---------|--------|
+| **400 Bad Request** | 请求参数错误 | 参数格式错误、缺少必填参数 | `invalid_parameter` |
+| **401 Unauthorized** | 未认证 | Token 缺失、Token 无效 | `unauthorized` |
+| **403 Forbidden** | 无权限 | 权限不足、角色不允许 | `forbidden` |
+| **404 Not Found** | 资源不存在 | 资源 ID 不存在 | `not_found` |
+| **409 Conflict** | 资源冲突 | 资源已存在、状态冲突 | `conflict` |
+| **422 Unprocessable Entity** | 数据验证失败 | 业务规则验证失败 | `validation_error` |
+| **429 Too Many Requests** | 请求限流 | 超过限流阈值 | `too_many_requests` |
+
+#### 5xx 服务器错误
+
+| 状态码 | 说明 | 使用场景 | 错误码 |
+|--------|------|---------|--------|
+| **500 Internal Server Error** | 服务器内部错误 | 未预期的异常 | `internal_error` |
+| **502 Bad Gateway** | 网关错误 | 上游服务失败 | `bad_gateway` |
+| **503 Service Unavailable** | 服务不可用 | 服务维护、过载 | `service_unavailable` |
+
+### 错误码定义
+
+```python
+# 错误码常量定义（用于程序化处理）
+ERROR_CODES = {
+    # 400 Bad Request
+    "invalid_parameter": "参数错误",
+    "validation_error": "数据验证失败",
+    
+    # 401 Unauthorized
+    "unauthorized": "未认证",
+    "token_expired": "Token 已过期",
+    "token_invalid": "Token 无效",
+    
+    # 403 Forbidden
+    "forbidden": "无权限",
+    "role_not_allowed": "角色不允许",
+    
+    # 404 Not Found
+    "not_found": "资源不存在",
+    "user_not_found": "用户不存在",
+    "reservation_not_found": "预约不存在",
+    
+    # 409 Conflict
+    "conflict": "资源冲突",
+    "reservation_conflict": "预约时间冲突",
+    "user_exists": "用户已存在",
+    
+    # 422 Unprocessable Entity
+    "validation_error": "业务验证失败",
+    
+    # 429 Too Many Requests
+    "too_many_requests": "请求过于频繁",
+    
+    # 500 Internal Server Error
+    "internal_error": "服务器内部错误",
+    
+    # 503 Service Unavailable
+    "service_unavailable": "服务暂时不可用",
+}
+```
+
+### 后端实现（FastAPI）
+
+```python
+from fastapi import HTTPException, status
+from fastapi.responses import JSONResponse
+from enum import Enum
+from typing import Optional, List, Any
+from pydantic import BaseModel
+from datetime import datetime
+
+class ErrorCode(str, Enum):
+    """错误码定义"""
+    # 400 Bad Request
+    INVALID_PARAMETER = "invalid_parameter"
+    VALIDATION_ERROR = "validation_error"
+    
+    # 401 Unauthorized
+    UNAUTHORIZED = "unauthorized"
+    TOKEN_EXPIRED = "token_expired"
+    TOKEN_INVALID = "token_invalid"
+    
+    # 403 Forbidden
+    FORBIDDEN = "forbidden"
+    ROLE_NOT_ALLOWED = "role_not_allowed"
+    
+    # 404 Not Found
+    NOT_FOUND = "not_found"
+    USER_NOT_FOUND = "user_not_found"
+    RESERVATION_NOT_FOUND = "reservation_not_found"
+    
+    # 409 Conflict
+    CONFLICT = "conflict"
+    RESERVATION_CONFLICT = "reservation_conflict"
+    USER_EXISTS = "user_exists"
+    
+    # 429 Too Many Requests
+    TOO_MANY_REQUESTS = "too_many_requests"
+    
+    # 500 Internal Server Error
+    INTERNAL_ERROR = "internal_error"
+    
+    # 503 Service Unavailable
+    SERVICE_UNAVAILABLE = "service_unavailable"
+
+class ErrorDetail(BaseModel):
+    """错误详情"""
+    field: Optional[str] = None
+    message: str
+    code: Optional[str] = None
+
+class ErrorResponse(BaseModel):
+    """错误响应"""
+    error: dict
+    timestamp: str
+    path: str
+
+class SuccessResponse(BaseModel):
+    """成功响应"""
+    data: Any
+    message: str = "success"
+    timestamp: str
+
+def create_error_response(
+    status_code: int,
+    error_code: ErrorCode,
+    message: str,
+    path: str,
+    details: Optional[List[ErrorDetail]] = None
+) -> JSONResponse:
+    """创建错误响应"""
+    error = {
+        "code": error_code.value,
+        "message": message,
+    }
+    
+    if details:
+        error["details"] = [detail.dict() for detail in details]
+    
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "error": error,
+            "timestamp": datetime.utcnow().isoformat(),
+            "path": path,
+        }
+    )
+
+# 使用示例
+@app.post("/users")
+async def create_user(user_in: UserCreate):
+    # 参数验证失败
+    if not is_valid_email(user_in.email):
+        return create_error_response(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error_code=ErrorCode.INVALID_PARAMETER,
+            message="参数错误",
+            path="/api/v1/users",
+            details=[ErrorDetail(field="email", message="邮箱格式不正确")]
+        )
+    
+    # 用户已存在
+    if await user_exists(user_in.email):
+        return create_error_response(
+            status_code=status.HTTP_409_CONFLICT,
+            error_code=ErrorCode.USER_EXISTS,
+            message="用户已存在",
+            path="/api/v1/users"
+        )
+    
+    # 创建成功
+    user = await create_user_in_db(user_in)
+    return SuccessResponse(
+        data=user,
+        message="创建成功",
+        timestamp=datetime.utcnow().isoformat()
+    )
+
+# 全局异常处理
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request, exc):
+    return create_error_response(
+        status_code=exc.status_code,
+        error_code=ErrorCode.INTERNAL_ERROR,
+        message=str(exc.detail),
+        path=str(request.url.path)
+    )
+```
+
+### 前端处理（Axios）
+
+```typescript
+// 统一响应处理
+apiClient.interceptors.response.use(
+  (response) => {
+    // 成功响应（2xx）
+    const { data } = response
+    
+    // 检查是否有 error 字段（某些错误可能返回 200）
+    if (data.error) {
+      const { code, message, details } = data.error
+      showError(message, details)
+      return Promise.reject(new Error(message))
+    }
+    
+    return data
+  },
+  (error) => {
+    // HTTP 错误处理（4xx, 5xx）
+    const { response } = error
+    
+    if (response) {
+      const { status, data } = response
+      const { error } = data
+      
+      // 根据状态码处理
+      switch (status) {
+        case 400:
+          // 参数错误
+          showError(error.message || '参数错误', error.details)
+          break
+        
+        case 401:
+          // 未认证，跳转登录
+          showError('登录已过期，请重新登录')
+          redirectToLogin()
+          break
+        
+        case 403:
+          // 无权限
+          showError('无权限访问')
+          break
+        
+        case 404:
+          // 资源不存在
+          showError('资源不存在')
+          break
+        
+        case 409:
+          // 资源冲突
+          showError(error.message || '资源冲突')
+          break
+        
+        case 422:
+          // 数据验证失败
+          showError('数据验证失败', error.details)
+          break
+        
+        case 429:
+          // 请求限流
+          showError('请求过于频繁，请稍后重试')
+          break
+        
+        case 500:
+          // 服务器错误
+          showError('服务器错误，请稍后重试')
+          break
+        
+        case 503:
+          // 服务不可用
+          showError('服务暂时不可用')
+          break
+        
+        default:
+          showError(error.message || '请求失败')
+      }
+    } else {
+      // 网络错误
+      showError('网络连接失败，请检查网络')
+    }
+    
+    return Promise.reject(error)
+  }
+)
+
+// 错误提示函数
+function showError(message: string, details?: Array<{field: string, message: string}>) {
+  // 显示主错误消息
+  toast.error(message)
+  
+  // 显示字段级错误
+  if (details && details.length > 0) {
+    details.forEach(detail => {
+      if (detail.field) {
+        // 在表单字段上显示错误
+        setFieldError(detail.field, detail.message)
+      } else {
+        toast.error(detail.message)
+      }
+    })
+  }
+}
+```
+
+---
+
+## 📏 方案二：HTTP 状态码 + 业务码（备选）
+
+### 核心原则
+
+> **HTTP 状态码表达传输层结果，业务码表达业务层结果。**
+
+### 响应格式
+
+#### 成功响应
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "id": "123",
+    "name": "user",
+    "email": "user@example.com"
+  },
+  "timestamp": "2026-03-14T10:30:00Z"
+}
+```
+
+**HTTP 状态码**: `200 OK`
+
+#### 失败响应
+
+```json
+{
+  "code": 1001,
+  "http_status": 400,
+  "message": "参数错误",
+  "data": null,
+  "errors": [
+    {
+      "field": "email",
+      "message": "邮箱格式不正确"
+    }
+  ],
+  "timestamp": "2026-03-14T10:30:00Z",
+  "path": "/api/v1/users"
+}
+```
+
+**HTTP 状态码**: `400 Bad Request`  
+**业务码**: `1001`
+
+### 业务码编码规则
+
+```
+业务码结构：[模块码][子模块码][错误码]
+
+模块分类:
+- 1000-1999: 通用错误
+- 2000-2999: 认证授权
+- 3000-3999: 用户相关
+- 4000-4999: 预约相关
+- 5000-5999: 系统错误
+```
+
+### 业务码定义
+
+```python
+from enum import IntEnum
+
+class BusinessCode(IntEnum):
+    """业务状态码"""
+    
+    # 成功
+    SUCCESS = 200
+    
+    # 通用错误 (1000-1999)
+    INVALID_PARAM = 1001
+    VALIDATION_ERROR = 1002
+    NOT_FOUND = 1004
+    CONFLICT = 1009
+    
+    # 认证授权 (2000-2999)
+    UNAUTHORIZED = 2001
+    TOKEN_EXPIRED = 2002
+    TOKEN_INVALID = 2003
+    FORBIDDEN = 2003
+    
+    # 用户相关 (3000-3999)
+    USER_NOT_FOUND = 3001
+    USER_EXISTS = 3002
+    
+    # 预约相关 (4000-4999)
+    RESERVATION_NOT_FOUND = 4001
+    RESERVATION_CONFLICT = 4002
+    
+    # 系统错误 (5000-5999)
+    INTERNAL_ERROR = 5000
+    SERVICE_UNAVAILABLE = 5003
+```
+
+### 后端实现（FastAPI）
+
+```python
+from fastapi import status
+from fastapi.responses import JSONResponse
+from enum import IntEnum
+from typing import Optional, List, Any
+from pydantic import BaseModel
+from datetime import datetime
+
+class BusinessCode(IntEnum):
+    """业务状态码"""
+    SUCCESS = 200
+    INVALID_PARAM = 1001
+    UNAUTHORIZED = 2001
+    # ... 更多业务码
+
+class APIResponse(BaseModel):
+    """统一 API 响应"""
+    code: int
+    message: str
+    data: Optional[Any] = None
+    errors: Optional[List[dict]] = None
+    timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+
+def create_response(
+    code: BusinessCode,
+    message: str,
+    data: Optional[Any] = None,
+    errors: Optional[List[dict]] = None,
+    http_status: int = 200
+) -> JSONResponse:
+    """创建统一响应"""
+    return JSONResponse(
+        status_code=http_status,
+        content={
+            "code": code,
+            "message": message,
+            "data": data,
+            "errors": errors,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    )
+
+# 使用示例
+@app.post("/users")
+async def create_user(user_in: UserCreate):
+    # 参数验证失败
+    if not is_valid_email(user_in.email):
+        return create_response(
+            code=BusinessCode.INVALID_PARAM,
+            message="参数错误",
+            errors=[{"field": "email", "message": "邮箱格式不正确"}],
+            http_status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # 创建成功
+    user = await create_user_in_db(user_in)
+    return create_response(
+        code=BusinessCode.SUCCESS,
+        message="创建成功",
+        data=user
+    )
+```
+
+### 前端处理（Axios）
+
+```typescript
+// 统一响应处理
+apiClient.interceptors.response.use(
+  (response) => {
+    const { code, data, message, errors } = response.data
+    
+    // 业务码判断
+    if (code === 200) {
+      return data
+    } else {
+      // 业务错误处理
+      showError(message, errors)
+      
+      // 特殊错误处理
+      if (code === 2001) {
+        // 未认证
+        redirectToLogin()
+      }
+      
+      return Promise.reject(new Error(message))
+    }
+  },
+  (error) => {
+    // HTTP 错误处理
+    const { status } = error.response
+    
+    switch (status) {
+      case 401:
+        showError('未认证')
+        redirectToLogin()
+        break
+      case 500:
+        showError('服务器错误')
+        break
+      default:
+        showError('请求失败')
+    }
+    
+    return Promise.reject(error)
+  }
+)
+```
+
+---
+
+## 📊 方案对比
+
+| 维度 | 方案一：只使用 HTTP 状态码 | 方案二：HTTP+业务码 |
+|------|------------------------|------------------|
+| **复杂度** | 低 | 中 |
+| **标准化程度** | 高（RFC 标准） | 中（自定义） |
+| **可读性** | 高（标准状态码） | 中（需查业务码表） |
+| **可维护性** | 高 | 中 |
+| **前端处理** | 简单（状态码判断） | 复杂（业务码判断） |
+| **错误分类** | 粗粒度（7 类） | 细粒度（多模块） |
+| **适用场景** | RESTful API、前后端分离 | 复杂业务系统、多系统集成 |
+| **推荐度** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
+
+---
+
+## 🎯 实施指南
+
+### 选择建议
+
+**选择方案一（默认）**：
+- ✅ RESTful API 设计
+- ✅ 前后端分离架构
+- ✅ 标准化优先
+- ✅ 简单场景
+
+**选择方案二**：
+- ✅ 复杂业务系统
+- ✅ 需要细粒度错误分类
+- ✅ 多系统集成
+- ✅ 历史系统兼容
+
+### 迁移路径
+
+**从方案二迁移到方案一**：
+1. 保留业务码字段（向后兼容）
+2. 逐步移除业务码依赖
+3. 前端改用 HTTP 状态码判断
+4. 最终移除业务码
+
+---
+
+## 📋 检查清单
+
+### API 设计
+
+- [ ] 使用标准 HTTP 状态码
+- [ ] 错误响应格式统一
+- [ ] 错误码定义清晰
+- [ ] 错误消息可读性强
+
+### 后端实现
+
+- [ ] 全局异常处理
+- [ ] 统一错误响应格式
+- [ ] 错误码常量定义
+- [ ] 日志记录错误详情
+
+### 前端处理
+
+- [ ] 统一响应拦截器
+- [ ] 按状态码分类处理
+- [ ] 错误提示友好
+- [ ] 字段级错误显示
+
+### 文档
+
+- [ ] OpenAPI 规范定义
+- [ ] 错误码文档
+- [ ] 示例完整
+- [ ] 更新及时
+
+---
+
+## 🔗 参考资源
+
+### 标准文档
+
+- **[RFC 7231](https://tools.ietf.org/html/rfc7231)** - HTTP/1.1 语义
+- **[RFC 7807](https://tools.ietf.org/html/rfc7807)** - HTTP API 问题详情
+
+### 行业实践
+
+- **[Google API Design Guide](https://cloud.google.com/apis/design/errors)** - Google 错误处理
+- **[Stripe API](https://stripe.com/docs/api/errors)** - Stripe 错误处理
+- **[GitHub API](https://docs.github.com/en/rest)** - GitHub API
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，包含两种方案 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**默认方案**: 方案一（只使用 HTTP 状态码）

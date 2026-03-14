@@ -1,0 +1,684 @@
+# Skill: Python 代码审查
+
+> 基于 Google、Microsoft 最佳实践的 Python 代码审查技能
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🔴 高（核心技能）
+
+---
+
+## 📋 前置技能
+
+- ✅ [code-review.skill](../code-review.skill) - 通用代码审查
+- ✅ [testing-python.skill](../testing/testing-python.skill) - Python 测试
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[PEP 8 - Style Guide for Python Code](https://pep8.org/)** - Python 代码规范
+- **[Google Python Style Guide](https://google.github.io/styleguide/pyguide.html)** - Google Python 规范
+- **[Microsoft Python Coding Standards](https://docs.microsoft.com/en-us/python/)** - Microsoft Python 标准
+- **[The Hitchhiker's Guide to Python](https://docs.python-guide.org/)** - Python 最佳实践
+
+### 工具栈
+
+- **pylint** - 代码检查
+- **black** - 代码格式化
+- **flake8** - 代码风格检查
+- **mypy** - 类型检查
+- **bandit** - 安全检查
+- **isort** - 导入排序
+
+---
+
+## 📏 Python 代码规范审查
+
+### 代码格式
+
+**检查清单**:
+```markdown
+### PEP 8 规范
+- [ ] 缩进使用 4 个空格
+- [ ] 行宽不超过 79 字符（代码）/ 72 字符（文档）
+- [ ] 函数/类之间空 2 行
+- [ ] 函数内空 1 行分隔逻辑块
+- [ ] 运算符两侧空格
+- [ ] 逗号后空格
+
+### 命名规范
+- [ ] 变量/函数：snake_case
+- [ ] 类：CamelCase
+- [ ] 常量：UPPER_CASE
+- [ ] 私有属性：_prefix
+- [ ] 名称具有描述性
+```
+
+**示例**:
+```python
+# ❌ 差的格式
+def calculate_user_age(user_birthdate,current_date):
+    age=current_date.year-user_birthdate.year
+    return age
+
+# ✅ 好的格式
+def calculate_user_age(user_birthdate: date, current_date: date) -> int:
+    """计算用户年龄"""
+    age = current_date.year - user_birthdate.year
+    return age
+```
+
+---
+
+### 类型注解
+
+**检查清单**:
+```markdown
+### 类型注解
+- [ ] 函数参数有类型注解
+- [ ] 函数返回值有类型注解
+- [ ] 变量有类型注解（复杂类型）
+- [ ] 使用 Optional 而非 Union[..., None]
+- [ ] 使用 List/Dict 而非 list/dict（Python < 3.9）
+```
+
+**示例**:
+```python
+from typing import List, Dict, Optional, Union
+
+# ❌ 无类型注解
+def create_user(email, name, age=None):
+    ...
+
+# ✅ 有类型注解
+def create_user(
+    email: str,
+    name: str,
+    age: Optional[int] = None
+) -> Dict[str, Union[str, int]]:
+    ...
+```
+
+---
+
+### 文档字符串
+
+**检查清单**:
+```markdown
+### 文档字符串
+- [ ] 所有公共函数有文档字符串
+- [ ] 所有类有文档字符串
+- [ ] 所有模块有文档字符串
+- [ ] 使用三引号
+- [ ] 描述参数和返回值
+- [ ] 包含使用示例（复杂函数）
+```
+
+**示例**:
+```python
+# ❌ 无文档字符串
+def process_data(data):
+    ...
+
+# ✅ 有文档字符串
+def process_data(data: Dict[str, Any]) -> ProcessedData:
+    """
+    处理原始数据
+    
+    Args:
+        data: 原始数据字典，包含以下字段：
+            - name: 用户名
+            - value: 数值
+    
+    Returns:
+        ProcessedData: 处理后的数据对象
+    
+    Raises:
+        ValueError: 当数据格式不正确时
+    
+    Example:
+        >>> data = {"name": "test", "value": 100}
+        >>> result = process_data(data)
+    """
+    ...
+```
+
+---
+
+## 🔍 Python 最佳实践审查
+
+### 代码结构
+
+**检查清单**:
+```markdown
+### 导入规范
+- [ ] 标准库导入在前
+- [ ] 第三方库导入在中
+- [ ] 本地导入在后
+- [ ] 每组之间空一行
+- [ ] 使用 isort 排序
+- [ ] 避免通配符导入（from x import *）
+- [ ] 避免循环导入
+
+### 函数设计
+- [ ] 函数单一职责
+- [ ] 函数长度 < 50 行
+- [ ] 参数数量 < 5 个
+- [ ] 避免嵌套过深（< 4 层）
+- [ ] 使用默认参数而非重载
+```
+
+**示例**:
+```python
+# ❌ 差的导入
+from typing import *
+from app.models import User, Post, Comment
+import os, sys, json
+
+# ✅ 好的导入
+import json
+import os
+import sys
+
+from typing import Dict, List, Optional
+
+from app.models import Comment, Post, User
+```
+
+---
+
+### 异常处理
+
+**检查清单**:
+```markdown
+### 异常处理
+- [ ] 捕获具体异常类型
+- [ ] 避免裸 except
+- [ ] 异常消息清晰
+- [ ] 记录异常堆栈
+- [ ] 自定义异常类
+- [ ] 避免异常吞噬
+```
+
+**示例**:
+```python
+# ❌ 差的异常处理
+def get_user(user_id):
+    try:
+        return db.query(User).filter(User.id == user_id).one()
+    except:
+        return None
+
+# ✅ 好的异常处理
+def get_user(user_id: int) -> Optional[User]:
+    """获取用户"""
+    try:
+        return db.query(User).filter(User.id == user_id).one()
+    except NoResultFound:
+        logger.warning(f"User {user_id} not found")
+        return None
+    except SQLAlchemyError as e:
+        logger.error(f"Database error: {e}", exc_info=True)
+        raise
+```
+
+---
+
+### 上下文管理器
+
+**检查清单**:
+```markdown
+### 资源管理
+- [ ] 使用 with 语句管理资源
+- [ ] 文件操作使用上下文管理器
+- [ ] 数据库会话使用上下文管理器
+- [ ] 自定义上下文管理器（复杂资源）
+- [ ] 避免资源泄漏
+```
+
+**示例**:
+```python
+# ❌ 差的资源管理
+def read_file(filepath):
+    f = open(filepath, 'r')
+    content = f.read()
+    f.close()
+    return content
+
+# ✅ 好的资源管理
+def read_file(filepath: str) -> str:
+    """读取文件内容"""
+    with open(filepath, 'r', encoding='utf-8') as f:
+        return f.read()
+```
+
+---
+
+### 列表推导式和生成器
+
+**检查清单**:
+```markdown
+### 推导式和生成器
+- [ ] 使用列表推导式而非循环
+- [ ] 复杂逻辑使用生成器函数
+- [ ] 避免嵌套推导式（> 2 层）
+- [ ] 使用生成器表达式节省内存
+- [ ] 推导式条件清晰
+```
+
+**示例**:
+```python
+# ❌ 差的写法
+result = []
+for i in range(100):
+    if i % 2 == 0:
+        result.append(i * 2)
+
+# ✅ 好的写法
+result = [i * 2 for i in range(100) if i % 2 == 0]
+
+# ✅ 大数据使用生成器
+result = (i * 2 for i in range(1000000) if i % 2 == 0)
+```
+
+---
+
+## 🐍 Python 常见错误审查
+
+### 可变默认参数
+
+**检查清单**:
+```markdown
+### 可变默认参数
+- [ ] 避免使用可变默认参数
+- [ ] 使用 None 默认值
+- [ ] 在函数内初始化可变对象
+```
+
+**示例**:
+```python
+# ❌ 常见错误
+def add_item(item, items=[]):
+    items.append(item)
+    return items
+
+# ✅ 正确写法
+def add_item(item, items: Optional[List] = None):
+    if items is None:
+        items = []
+    items.append(item)
+    return items
+```
+
+---
+
+### 可变对象比较
+
+**检查清单**:
+```markdown
+### 对象比较
+- [ ] 使用 is 比较 None
+- [ ] 使用 == 比较值
+- [ ] 避免可变对象直接比较
+```
+
+**示例**:
+```python
+# ❌ 错误写法
+if value == None:
+    ...
+
+if list1 == list2:  # 比较的是引用
+    ...
+
+# ✅ 正确写法
+if value is None:
+    ...
+
+if list1 is list2:  # 比较的是身份
+    ...
+```
+
+---
+
+### 循环导入
+
+**检查清单**:
+```markdown
+### 循环导入
+- [ ] 避免循环导入
+- [ ] 重构代码结构
+- [ ] 使用局部导入（必要时）
+- [ ] 使用 TYPE_CHECKING（类型导入）
+```
+
+**示例**:
+```python
+# ❌ 循环导入
+# module_a.py
+from module_b import ClassB
+
+# module_b.py
+from module_a import ClassA
+
+# ✅ 解决方案
+# 使用 TYPE_CHECKING
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from module_b import ClassB
+```
+
+---
+
+## 🔒 Python 安全检查
+
+### 安全漏洞
+
+**检查清单**:
+```markdown
+### SQL 注入
+- [ ] 使用参数化查询
+- [ ] 避免字符串拼接 SQL
+- [ ] 使用 ORM
+
+### XSS 攻击
+- [ ] 输出编码
+- [ ] 输入验证
+- [ ] 使用安全库
+
+### 命令注入
+- [ ] 避免 shell=True
+- [ ] 使用列表参数
+- [ ] 验证用户输入
+
+### 敏感数据
+- [ ] 不硬编码密码/密钥
+- [ ] 使用环境变量
+- [ ] 加密敏感数据
+```
+
+**示例**:
+```python
+# ❌ SQL 注入风险
+query = f"SELECT * FROM users WHERE email = '{email}'"
+result = db.execute(query)
+
+# ✅ 参数化查询
+query = "SELECT * FROM users WHERE email = :email"
+result = db.execute(query, {"email": email})
+
+# ❌ 命令注入风险
+os.system(f"ls {user_input}")
+
+# ✅ 安全写法
+subprocess.run(["ls", user_input], check=True)
+```
+
+---
+
+### 安全工具
+
+**bandit 检查**:
+```bash
+# 安装 bandit
+pip install bandit
+
+# 运行安全检查
+bandit -r app/
+
+# 生成报告
+bandit -r app/ -f html -o bandit-report.html
+```
+
+**常见安全问题**:
+```markdown
+### B101: 断言使用
+- 避免在生产代码使用 assert
+
+### B102: exec/eval 使用
+- 避免使用 exec/eval
+
+### B104: 绑定所有接口
+- 避免绑定 0.0.0.0
+
+### B301: pickle 使用
+- 避免使用 pickle 加载不可信数据
+```
+
+---
+
+## 🚀 FastAPI 特定审查
+
+### API 设计
+
+**检查清单**:
+```markdown
+### 路由设计
+- [ ] 使用 APIRouter 组织路由
+- [ ] 路由前缀统一
+- [ ] 标签分类清晰
+- [ ] 响应模型定义
+- [ ] 错误响应统一
+
+### 参数验证
+- [ ] 使用 Pydantic 模型
+- [ ] 参数验证完整
+- [ ] 默认值合理
+- [ ] 示例数据提供
+```
+
+**示例**:
+```python
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, EmailStr
+
+router = APIRouter(prefix="/users", tags=["用户管理"])
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    name: str = Field(..., min_length=1, max_length=100)
+    password: str = Field(..., min_length=8)
+
+@router.post("/", response_model=UserResponse, status_code=201)
+async def create_user(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
+    """创建用户"""
+    ...
+```
+
+---
+
+### 依赖注入
+
+**检查清单**:
+```markdown
+### 依赖注入
+- [ ] 使用 Depends 管理依赖
+- [ ] 数据库会话正确管理
+- [ ] 认证依赖复用
+- [ ] 依赖测试友好
+```
+
+**示例**:
+```python
+from fastapi import Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+async def get_db() -> AsyncSession:
+    """获取数据库会话"""
+    async with SessionLocal() as db:
+        try:
+            yield db
+        finally:
+            await db.close()
+
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+) -> User:
+    """获取当前用户"""
+    ...
+```
+
+---
+
+### 异步编程
+
+**检查清单**:
+```markdown
+### 异步编程
+- [ ] I/O 操作使用 async/await
+- [ ] 避免阻塞异步代码
+- [ ] 正确使用 asyncio.gather
+- [ ] 避免并发陷阱
+```
+
+**示例**:
+```python
+# ❌ 阻塞异步代码
+async def get_users():
+    users = db.query(User).all()  # 阻塞操作
+    return users
+
+# ✅ 异步代码
+async def get_users():
+    result = await db.execute(select(User))
+    users = result.scalars().all()
+    return users
+```
+
+---
+
+## 📋 审查检查清单
+
+### 代码规范
+
+- [ ] PEP 8 规范
+- [ ] 类型注解完整
+- [ ] 文档字符串完整
+- [ ] 导入规范
+- [ ] 命名规范
+
+### 代码质量
+
+- [ ] 函数单一职责
+- [ ] 函数长度合理
+- [ ] 异常处理完善
+- [ ] 资源管理正确
+- [ ] 无常见错误
+
+### 安全性
+
+- [ ] 无 SQL 注入
+- [ ] 无命令注入
+- [ ] 敏感数据保护
+- [ ] 输入验证完善
+- [ ] bandit 检查通过
+
+### FastAPI 特定
+
+- [ ] API 设计规范
+- [ ] 依赖注入正确
+- [ ] 异步编程正确
+- [ ] 响应模型定义
+- [ ] 错误处理统一
+
+---
+
+## 🔧 审查工具
+
+### 自动化工具
+
+**代码质量**:
+```bash
+# pylint 代码检查
+pylint app/ --max-line-length=100 --disable=C0114
+
+# black 代码格式化
+black app/ --line-length 100
+
+# flake8 代码风格
+flake8 app/ --max-line-length=100 --ignore=E501,W503
+
+# isort 导入排序
+isort app/
+
+# mypy 类型检查
+mypy app/ --ignore-missing-imports
+```
+
+**安全检查**:
+```bash
+# bandit 安全检查
+bandit -r app/
+
+# safety 依赖检查
+safety check
+```
+
+---
+
+### CI/CD 集成
+
+**GitHub Actions**:
+```yaml
+name: Code Quality
+on: [pull_request]
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.11
+      - name: Install dependencies
+        run: pip install pylint black flake8 mypy bandit
+      - name: Run linters
+        run: |
+          black --check app/
+          flake8 app/
+          pylint app/
+          mypy app/
+          bandit -r app/
+```
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[PEP 8](https://pep8.org/)** - Python 代码规范
+- **[Google Python Style Guide](https://google.github.io/styleguide/pyguide.html)** - Google Python 规范
+- **[Microsoft Python Coding Standards](https://docs.microsoft.com/en-us/python/)** - Microsoft Python 标准
+
+### 学习资源
+
+- **[The Hitchhiker's Guide to Python](https://docs.python-guide.org/)** - Python 最佳实践
+- **[Effective Python](https://effectivepython.com/)** - Python 高效编程
+- **[Python Tricks](https://realpython.com/products/python-tricks-book/)** - Python 技巧
+
+### 工具文档
+
+- **[pylint Documentation](https://pylint.pycqa.org/)** - pylint 文档
+- **[black Documentation](https://black.readthedocs.io/)** - black 文档
+- **[bandit Documentation](https://bandit.readthedocs.io/)** - bandit 文档
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，基于 Google/Microsoft 最佳实践 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🔴 高（核心技能）

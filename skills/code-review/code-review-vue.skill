@@ -1,0 +1,844 @@
+# Skill: Vue 代码审查
+
+> 基于 Google、Microsoft 最佳实践的 Vue 3 代码审查技能
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🟡 中（核心技能）
+
+---
+
+## 📋 前置技能
+
+- ✅ [code-review.skill](../code-review.skill) - 通用代码审查
+- ✅ [testing-vue.skill](../testing/testing-vue.skill) - Vue 测试
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[Vue.js Style Guide](https://vuejs.org/style-guide/)** - Vue 官方风格指南
+- **[Google TypeScript Style Guide](https://google.github.io/styleguide/tsguide.html)** - Google TypeScript 规范
+- **[Microsoft TypeScript Coding Guidelines](https://github.com/Microsoft/TypeScript/wiki/Coding-guidelines)** - Microsoft TypeScript 指南
+
+### 工具栈
+
+- **ESLint** - 代码检查
+- **Prettier** - 代码格式化
+- **Volar** - Vue 语言服务
+- **type-check** - 类型检查
+- **vue-tsc** - Vue TypeScript 检查
+
+---
+
+## 📏 Vue 代码规范审查
+
+### 组件命名
+
+**检查清单**:
+```markdown
+### 组件命名规范
+- [ ] 组件名单词化（无空格）
+- [ ] 使用 PascalCase（多单词组件）
+- [ ] 基础组件加 Base 前缀
+- [ ] 布局组件加 Layout 前缀
+- [ ] 业务组件有意义名称
+```
+
+**示例**:
+```vue
+<!-- ❌ 差的命名 -->
+<!-- components/userCard.vue -->
+<!-- components/my-component.vue -->
+
+<!-- ✅ 好的命名 -->
+<!-- components/UserCard.vue -->
+<!-- components/BaseButton.vue -->
+<!-- components/LayoutHeader.vue -->
+<!-- components/UserProfile.vue -->
+```
+
+---
+
+### Props 定义
+
+**检查清单**:
+```markdown
+### Props 规范
+- [ ] 使用对象语法定义 props
+- [ ] 指定类型
+- [ ] 指定必需性（required）
+- [ ] 提供默认值（default）
+- [ ] 使用验证器（validator）
+- [ ] Props 命名 camelCase
+```
+
+**示例**:
+```vue
+<script setup lang="ts">
+interface Props {
+  userId: number
+  userName: string
+  isActive?: boolean
+  role?: 'admin' | 'user' | 'guest'
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  isActive: false,
+  role: 'user'
+})
+</script>
+
+<!-- ❌ 差的 props 定义 -->
+<script setup>
+const props = defineProps(['userId', 'userName'])
+</script>
+
+<!-- ✅ 好的 props 定义 -->
+<script setup lang="ts">
+interface Props {
+  userId: number
+  userName: string
+  isActive?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  isActive: false
+})
+</script>
+```
+
+---
+
+### Emits 定义
+
+**检查清单**:
+```markdown
+### Emits 规范
+- [ ] 使用对象语法定义 emits
+- [ ] 事件名 kebab-case
+- [ ] 事件名动词开头
+- [ ] 使用验证器（复杂事件）
+- [ ] 避免 v-model 滥用
+```
+
+**示例**:
+```vue
+<script setup lang="ts">
+const emit = defineEmits<{
+  (e: 'update', value: string): void
+  (e: 'delete', id: number): void
+  (e: 'error', error: Error): void
+}>()
+
+// 触发事件
+emit('update', newValue)
+emit('delete', itemId)
+</script>
+
+<!-- ❌ 差的事件定义 -->
+<script setup>
+const emit = defineEmits(['update', 'delete'])
+</script>
+
+<!-- ✅ 好的事件定义 -->
+<script setup lang="ts">
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: string): void
+  (e: 'delete:item', id: number): void
+}>()
+</script>
+```
+
+---
+
+### 组件结构
+
+**检查清单**:
+```markdown
+### 组件结构
+- [ ] 使用单文件组件（SFC）
+- [ ] script setup 语法
+- [ ] 模板表达式简洁
+- [ ] 样式作用域（scoped）
+- [ ] 组件大小合理（< 500 行）
+```
+
+**示例**:
+```vue
+<template>
+  <div class="user-card">
+    <h3>{{ userName }}</h3>
+    <p>{{ email }}</p>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed } from 'vue'
+
+interface Props {
+  userId: number
+}
+
+const props = defineProps<Props>()
+const emit = defineEmits<{
+  (e: 'delete', id: number): void
+}>()
+
+// 计算属性
+const userName = computed(() => getUser(props.userId).name)
+const email = computed(() => getUser(props.userId).email)
+
+// 方法
+const handleDelete = () => {
+  emit('delete', props.userId)
+}
+</script>
+
+<style scoped>
+.user-card {
+  padding: 1rem;
+  border: 1px solid #ddd;
+}
+</style>
+```
+
+---
+
+## 🔍 Vue 最佳实践审查
+
+### Composition API
+
+**检查清单**:
+```markdown
+### Composition API
+- [ ] 优先使用 Composition API
+- [ ] 使用 script setup 语法
+- [ ] 逻辑抽取为 composables
+- [ ] 避免 Options API 混用
+- [ ] 响应式数据正确声明
+```
+
+**示例**:
+```vue
+<!-- ❌ Options API -->
+<script>
+export default {
+  data() {
+    return {
+      count: 0
+    }
+  },
+  methods: {
+    increment() {
+      this.count++
+    }
+  }
+}
+</script>
+
+<!-- ✅ Composition API -->
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const count = ref(0)
+const increment = () => {
+  count.value++
+}
+</script>
+```
+
+---
+
+### 响应式数据
+
+**检查清单**:
+```markdown
+### 响应式数据
+- [ ] 使用 ref 声明基本类型
+- [ ] 使用 reactive 声明对象
+- [ ] 避免直接解构响应式对象
+- [ ] 使用 toRefs 解构
+- [ ] 计算属性使用 computed
+```
+
+**示例**:
+```vue
+<script setup lang="ts">
+import { ref, reactive, computed, toRefs } from 'vue'
+
+// ✅ 正确的响应式声明
+const count = ref(0)
+const state = reactive({
+  name: 'test',
+  age: 18
+})
+
+// ✅ 计算属性
+const doubleCount = computed(() => count.value * 2)
+
+// ✅ 解构响应式对象
+const { name, age } = toRefs(state)
+
+// ❌ 错误的解构（失去响应性）
+// const { name, age } = state
+</script>
+```
+
+---
+
+### 生命周期
+
+**检查清单**:
+```markdown
+### 生命周期
+- [ ] 使用 Composition API 生命周期
+- [ ] 清理副作用（onUnmounted）
+- [ ] 避免内存泄漏
+- [ ] 异步操作正确处理
+```
+
+**示例**:
+```vue
+<script setup lang="ts">
+import { onMounted, onUnmounted, ref } from 'vue'
+
+const timer = ref<number | null>(null)
+
+onMounted(() => {
+  timer.value = window.setInterval(() => {
+    console.log('tick')
+  }, 1000)
+})
+
+onUnmounted(() => {
+  if (timer.value) {
+    clearInterval(timer.value)
+  }
+})
+</script>
+```
+
+---
+
+### 组件通信
+
+**检查清单**:
+```markdown
+### 组件通信
+- [ ] 父子组件使用 props/emits
+- [ ] 避免 $parent/$children
+- [ ] 避免 $emit 跨级
+- [ ] 状态管理使用 Pinia
+- [ ] 避免 EventBus
+```
+
+**示例**:
+```vue
+<!-- ✅ 正确的组件通信 -->
+<!-- Parent.vue -->
+<template>
+  <ChildComponent 
+    :user="user" 
+    @update="handleUpdate"
+    @delete="handleDelete"
+  />
+</template>
+
+<!-- ChildComponent.vue -->
+<script setup lang="ts">
+const props = defineProps<{ user: User }>()
+const emit = defineEmits<{
+  (e: 'update', user: User): void
+  (e: 'delete', id: number): void
+}>()
+</script>
+
+<!-- ❌ 避免的通信方式 -->
+<!-- 避免 $parent -->
+this.$parent.updateUser(user)
+
+<!-- 避免 $emit 跨级 -->
+this.$emit('update', user) <!-- 在深层组件中 -->
+```
+
+---
+
+## 🐛 Vue 常见错误审查
+
+### v-if 和 v-for
+
+**检查清单**:
+```markdown
+### v-if 和 v-for
+- [ ] 避免 v-if 和 v-for 同元素
+- [ ] 使用计算属性过滤
+- [ ] 使用 template 包裹
+```
+
+**示例**:
+```vue
+<!-- ❌ 差的写法 -->
+<template>
+  <li v-for="user in users" v-if="user.isActive">
+    {{ user.name }}
+  </li>
+</template>
+
+<!-- ✅ 好的写法 -->
+<template>
+  <li v-for="user in activeUsers" :key="user.id">
+    {{ user.name }}
+  </li>
+</template>
+
+<script setup lang="ts">
+const activeUsers = computed(() => 
+  users.value.filter(user => user.isActive)
+)
+</script>
+```
+
+---
+
+### key 属性
+
+**检查清单**:
+```markdown
+### key 属性
+- [ ] v-for 必须使用 key
+- [ ] 使用唯一 ID 作为 key
+- [ ] 避免使用 index 作为 key
+- [ ] key 值稳定不变
+```
+
+**示例**:
+```vue
+<!-- ❌ 差的 key -->
+<template>
+  <div v-for="(user, index) in users" :key="index">
+    {{ user.name }}
+  </div>
+</template>
+
+<!-- ✅ 好的 key -->
+<template>
+  <div v-for="user in users" :key="user.id">
+    {{ user.name }}
+  </div>
+</template>
+```
+
+---
+
+### Props 修改
+
+**检查清单**:
+```markdown
+### Props 修改
+- [ ] 避免直接修改 props
+- [ ] 使用计算属性派生
+- [ ] 使用 emit 通知父组件
+- [ ] 使用 v-model 双向绑定
+```
+
+**示例**:
+```vue
+<!-- ❌ 直接修改 props -->
+<script setup lang="ts">
+const props = defineProps<{ count: number }>()
+
+const increment = () => {
+  props.count++ // ❌ 错误
+}
+</script>
+
+<!-- ✅ 正确的写法 -->
+<script setup lang="ts">
+const props = defineProps<{ count: number }>()
+const emit = defineEmits<{
+  (e: 'update:count', value: number): void
+}>()
+
+const increment = () => {
+  emit('update:count', props.count + 1)
+}
+</script>
+```
+
+---
+
+## 📦 Pinia 状态管理审查
+
+### Store 设计
+
+**检查清单**:
+```markdown
+### Store 设计
+- [ ] 使用 setup 语法定义 store
+- [ ] state 使用 ref/reactive
+- [ ] getters 使用 computed
+- [ ] actions 使用函数
+- [ ] 避免全局状态滥用
+```
+
+**示例**:
+```typescript
+// stores/user.ts
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+
+export const useUserStore = defineStore('user', () => {
+  // State
+  const currentUser = ref<User | null>(null)
+  const users = ref<User[]>([])
+
+  // Getters
+  const isLoggedIn = computed(() => !!currentUser.value)
+  const activeUsers = computed(() => users.value.filter(u => u.isActive))
+
+  // Actions
+  const fetchUser = async (id: number) => {
+    const response = await api.getUser(id)
+    currentUser.value = response.data
+  }
+
+  const deleteUser = async (id: number) => {
+    await api.deleteUser(id)
+    users.value = users.value.filter(u => u.id !== id)
+  }
+
+  return {
+    currentUser,
+    users,
+    isLoggedIn,
+    activeUsers,
+    fetchUser,
+    deleteUser
+  }
+})
+```
+
+---
+
+### Store 使用
+
+**检查清单**:
+```markdown
+### Store 使用
+- [ ] 在组件中正确使用 store
+- [ ] 避免直接修改 state
+- [ ] 使用 actions 修改状态
+- [ ] 解构使用 storeToRefs
+```
+
+**示例**:
+```vue
+<script setup lang="ts">
+import { useUserStore } from '@/stores/user'
+import { storeToRefs } from 'pinia'
+
+const userStore = useUserStore()
+
+// ✅ 正确的解构
+const { currentUser, isLoggedIn } = storeToRefs(userStore)
+const { fetchUser, deleteUser } = userStore
+
+// ❌ 错误的解构（失去响应性）
+// const { currentUser } = userStore
+</script>
+```
+
+---
+
+## 🎨 TypeScript 审查
+
+### 类型定义
+
+**检查清单**:
+```markdown
+### 类型定义
+- [ ] 使用 TypeScript
+- [ ] 接口定义清晰
+- [ ] 避免 any 类型
+- [ ] 使用类型推断
+- [ ] 泛型使用合理
+```
+
+**示例**:
+```typescript
+// ✅ 好的类型定义
+interface User {
+  id: number
+  name: string
+  email: string
+  isActive: boolean
+}
+
+interface ApiResponse<T> {
+  data: T
+  message: string
+  status: number
+}
+
+// ❌ 避免 any
+function processUser(user: any) {
+  ...
+}
+
+// ✅ 使用具体类型
+function processUser(user: User) {
+  ...
+}
+```
+
+---
+
+### 组件事件类型
+
+**检查清单**:
+```markdown
+### 组件事件类型
+- [ ] emits 定义类型
+- [ ] 事件参数类型明确
+- [ ] 使用字面量类型
+- [ ] 避免隐式 any
+```
+
+**示例**:
+```typescript
+// ✅ 好的事件类型
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: string): void
+  (e: 'delete:item', id: number): void
+  (e: 'error', error: Error): void
+}>()
+
+// ❌ 隐式 any
+const emit = defineEmits(['update', 'delete'])
+```
+
+---
+
+## 🔒 安全审查
+
+### XSS 防护
+
+**检查清单**:
+```markdown
+### XSS 防护
+- [ ] 避免 v-html 滥用
+- [ ] 用户输入转义
+- [ ] URL 验证
+- [ ] 使用安全库
+```
+
+**示例**:
+```vue
+<!-- ❌ XSS 风险 -->
+<template>
+  <div v-html="userInput"></div>
+</template>
+
+<!-- ✅ 安全写法 -->
+<template>
+  <div>{{ userInput }}</div>
+</template>
+
+<!-- ✅ 必须使用 v-html 时 -->
+<template>
+  <div v-html="sanitizeHtml(userInput)"></div>
+</template>
+
+<script setup lang="ts">
+import DOMPurify from 'dompurify'
+
+const sanitizeHtml = (html: string) => {
+  return DOMPurify.sanitize(html)
+}
+</script>
+```
+
+---
+
+### API 安全
+
+**检查清单**:
+```markdown
+### API 安全
+- [ ] Token 安全存储
+- [ ] 请求拦截器配置
+- [ ] 错误处理完善
+- [ ] 敏感数据加密
+```
+
+**示例**:
+```typescript
+// api/client.ts
+import axios from 'axios'
+
+const apiClient = axios.create({
+  baseURL: '/api/v1',
+  withCredentials: true
+})
+
+// 请求拦截器
+apiClient.interceptors.request.use(config => {
+  const token = localStorage.getItem('access_token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+// 响应拦截器
+apiClient.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response?.status === 401) {
+      // Token 过期，跳转登录
+      router.push('/login')
+    }
+    return Promise.reject(error)
+  }
+)
+```
+
+---
+
+## 📋 审查检查清单
+
+### 组件规范
+
+- [ ] 组件命名规范
+- [ ] Props 定义完整
+- [ ] Emits 定义完整
+- [ ] 组件结构合理
+- [ ] 样式作用域
+
+### Composition API
+
+- [ ] 使用 script setup
+- [ ] 响应式数据正确
+- [ ] 生命周期正确
+- [ ] 计算属性使用
+- [ ] 逻辑抽取 composables
+
+### 组件通信
+
+- [ ] Props/Emits 使用
+- [ ] 避免直接修改 props
+- [ ] Pinia 正确使用
+- [ ] 避免跨级通信
+
+### TypeScript
+
+- [ ] 类型定义完整
+- [ ] 避免 any 类型
+- [ ] 事件类型明确
+- [ ] 泛型使用合理
+
+### 安全性
+
+- [ ] XSS 防护
+- [ ] API 安全
+- [ ] 输入验证
+- [ ] Token 管理
+
+---
+
+## 🔧 审查工具
+
+### 自动化工具
+
+**代码质量**:
+```bash
+# ESLint 检查
+eslint src/ --ext .vue,.ts
+
+# Prettier 格式化
+prettier --write src/
+
+# Vue TypeScript 检查
+vue-tsc --noEmit
+
+# 类型检查
+tsc --noEmit
+```
+
+**配置文件**:
+```json
+// .eslintrc.cjs
+module.exports = {
+  extends: [
+    'plugin:vue/vue3-recommended',
+    '@vue/typescript/recommended'
+  ],
+  rules: {
+    'vue/multi-word-component-names': 'off'
+  }
+}
+```
+
+---
+
+### CI/CD 集成
+
+**GitHub Actions**:
+```yaml
+name: Code Quality
+on: [pull_request]
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run linters
+        run: |
+          npm run lint
+          npm run type-check
+```
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[Vue.js Style Guide](https://vuejs.org/style-guide/)** - Vue 官方风格指南
+- **[Google TypeScript Style Guide](https://google.github.io/styleguide/tsguide.html)** - Google TypeScript 规范
+- **[Microsoft TypeScript Guidelines](https://github.com/Microsoft/TypeScript/wiki/Coding-guidelines)** - Microsoft TypeScript 指南
+
+### 学习资源
+
+- **[Vue.js Best Practices](https://vuejs.org/guide/best-practices/)** - Vue 最佳实践
+- **[TypeScript Deep Dive](https://basarat.gitbook.io/typescript/)** - TypeScript 深入
+- **[Pinia Documentation](https://pinia.vuejs.org/)** - Pinia 文档
+
+### 工具文档
+
+- **[ESLint Vue Plugin](https://eslint.vuejs.org/)** - ESLint Vue 插件
+- **[Volar Documentation](https://volarjs.dev/)** - Volar 文档
+- **[vue-tsc Documentation](https://github.com/vuejs/language-tools/tree/master/packages/vue-tsc)** - vue-tsc 文档
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，基于 Google/Microsoft 最佳实践 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🟡 中（核心技能）

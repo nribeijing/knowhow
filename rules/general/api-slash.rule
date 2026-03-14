@@ -233,7 +233,7 @@ async def list_users():
 | **单个资源** | `@router.get("/{id}")` | `/api/v1/users/{id}` | ❌ 不要 | `/users/123` |
 | **嵌套资源** | `@router.get("/{id}/posts")` | `/api/v1/users/{id}/posts` | ❌ 不要 | `/users/123/posts` |
 | **操作端点** | `@router.post("/{id}/activate")` | `/api/v1/users/{id}/activate` | ❌ 不要 | `/users/123/activate` |
-| **特殊端点** | `@router.get("/me")` | `/api/v1/users/me` | ❌ 不要 | `/users/me` |
+| **其他端点** | `@router.get("/me")` | `/api/v1/users/me` | ❌ 不要 | `/users/me` |
 
 ### 前端 API 调用
 
@@ -243,7 +243,7 @@ async def list_users():
 | **单个资源** | `apiClient.get('/users/123')` | ❌ 不添加 | 最终请求 `/users/123` |
 | **嵌套资源** | `apiClient.get('/users/123/posts')` | ❌ 不添加 | 最终请求 `/users/123/posts` |
 | **操作端点** | `apiClient.post('/users/123/activate')` | ❌ 不添加 | 最终请求 `/users/123/activate` |
-| **特殊端点** | `apiClient.get('/users/me')` | ❌ 不添加 | 最终请求 `/users/me` |
+| **其他端点** | `apiClient.get('/users/me')` | ❌ 不添加 | 最终请求 `/users/me` |
 
 ---
 
@@ -304,7 +304,7 @@ apiClient.interceptors.request.use((config) => {
     urlPath.match(/\/\w+\/\w+/) ||              // /{id}/action
     urlPath.match(/^\/auth\//) ||               // 认证端点
     urlPath.match(/^\/reservations\//) ||       // reservations 全部
-    urlPath.match(/\/(dashboard|health)$/);     // 特殊端点
+    urlPath.match(/\/(dashboard|health)$/);     // 其他端点
   
   if (!shouldExclude) {
     config.url = config.url + '/'

@@ -1,0 +1,639 @@
+# Skill: 后端架构设计
+
+> 基于 Google、Microsoft、FastAPI 最佳实践的后端架构设计技能
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🔴 高（核心技能）
+
+---
+
+## 📋 前置技能
+
+- ✅ [architecture-principles.skill](../architecture-principles.skill) - 架构设计原则
+- ✅ [code-review-python.skill](../code-review/code-review-python.skill) - Python 代码审查
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[Google Cloud Architecture](https://cloud.google.com/architecture)** - Google 云架构
+- **[Microsoft Azure Architecture](https://docs.microsoft.com/en-us/azure/architecture/)** - Microsoft Azure 架构
+- **[FastAPI Best Practices](https://fastapi.tiangolo.com/)** - FastAPI 最佳实践
+- **[12-Factor App](https://12factor.net/)** - 十二要素应用
+
+### 行业最佳实践
+
+- **Layered Architecture** - 分层架构
+- **Domain-Driven Design (DDD)** - 领域驱动设计
+- **Clean Architecture** - 整洁架构
+- **Hexagonal Architecture** - 六边形架构
+
+---
+
+## 🏛️ FastAPI 项目结构
+
+### 标准项目结构
+
+```
+backend/
+├── app/
+│   ├── __init__.py
+│   ├── main.py              # 应用入口
+│   ├── core/                # 核心配置
+│   │   ├── __init__.py
+│   │   ├── config.py        # 配置管理
+│   │   ├── security.py      # 安全工具
+│   │   ├── dependencies.py  # 依赖注入
+│   │   └── exceptions.py    # 异常处理
+│   ├── api/                 # API 路由层
+│   │   ├── __init__.py
+│   │   ├── auth.py          # 认证 API
+│   │   ├── users.py         # 用户 API
+│   │   └── ...
+│   ├── schemas/             # Pydantic 模型
+│   │   ├── __init__.py
+│   │   ├── user.py          # 用户 Schema
+│   │   └── ...
+│   ├── models/              # 数据库模型
+│   │   ├── __init__.py
+│   │   ├── user.py          # 用户模型
+│   │   └── ...
+│   ├── services/            # 业务逻辑层
+│   │   ├── __init__.py
+│   │   ├── user_service.py  # 用户服务
+│   │   └── ...
+│   ├── repositories/        # 数据访问层
+│   │   ├── __init__.py
+│   │   ├── user_repo.py     # 用户仓库
+│   │   └── ...
+│   ├── middleware/          # 中间件
+│   │   ├── __init__.py
+│   │   └── ...
+│   └── utils/               # 工具函数
+│       ├── __init__.py
+│       └── ...
+├── tests/                   # 测试
+│   ├── __init__.py
+│   ├── test_api/
+│   ├── test_services/
+│   └── ...
+├── alembic/                 # 数据库迁移
+├── scripts/                 # 脚本
+├── requirements.txt         # 依赖
+└── README.md
+```
+
+---
+
+## 📐 分层架构设计
+
+### 典型分层
+
+```
+┌─────────────────┐
+│  API Layer      │  ← 路由层 (api/)
+├─────────────────┤
+│  Service Layer  │  ← 业务逻辑层 (services/)
+├─────────────────┤
+│ Repository Layer│  ← 数据访问层 (repositories/)
+├─────────────────┤
+│  Database       │  ← 数据库层
+└─────────────────┘
+```
+
+### 各层职责
+
+#### API 层 (api/)
+```python
+"""
+职责:
+- 接收 HTTP 请求
+- 参数验证
+- 调用 Service 层
+- 返回 HTTP 响应
+
+原则:
+- 不包含业务逻辑
+- 只负责请求/响应转换
+- 薄控制器模式
+"""
+
+from fastapi import APIRouter, Depends
+from app.schemas.user import UserCreate, UserResponse
+from app.services.user_service import UserService
+from app.core.dependencies import get_db
+
+router = APIRouter()
+
+@router.post("/users", response_model=UserResponse)
+async def create_user(
+    user_in: UserCreate,
+    service: UserService = Depends()
+):
+    """创建用户 - API 层只负责请求/响应"""
+    return await service.create_user(user_in)
+```
+
+#### Service 层 (services/)
+```python
+"""
+职责:
+- 实现业务逻辑
+- 事务管理
+- 调用 Repository 层
+- 业务规则验证
+
+原则:
+- 包含核心业务逻辑
+- 无 HTTP 相关代码
+- 可独立测试
+"""
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.repositories.user_repo import UserRepository
+from app.schemas.user import UserCreate
+from app.core.security import get_password_hash
+
+class UserService:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+        self.repo = UserRepository(db)
+    
+    async def create_user(self, user_in: UserCreate):
+        """创建用户 - 业务逻辑层"""
+        # 业务验证
+        existing = await self.repo.get_by_email(user_in.email)
+        if existing:
+            raise ValueError("邮箱已存在")
+        
+        # 密码加密
+        hashed_password = get_password_hash(user_in.password)
+        
+        # 创建用户
+        user = await self.repo.create({
+            **user_in.dict(),
+            "hashed_password": hashed_password
+        })
+        
+        return user
+```
+
+#### Repository 层 (repositories/)
+```python
+"""
+职责:
+- 数据访问
+- CRUD 操作
+- 查询构建
+- 数据库事务
+
+原则:
+- 只包含数据库操作
+- 无业务逻辑
+- 返回 ORM 对象
+"""
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from app.models.user import User
+from app.schemas.user import UserCreate
+
+class UserRepository:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+    
+    async def get_by_email(self, email: str) -> User | None:
+        """根据邮箱查询用户"""
+        result = await self.db.execute(
+            select(User).where(User.email == email)
+        )
+        return result.scalar_one_or_none()
+    
+    async def create(self, data: dict) -> User:
+        """创建用户"""
+        user = User(**data)
+        self.db.add(user)
+        await self.db.commit()
+        await self.db.refresh(user)
+        return user
+```
+
+---
+
+## 🔧 依赖注入模式
+
+### 依赖注入容器
+
+```python
+# app/core/dependencies.py
+from functools import lru_cache
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from app.core.config import settings
+
+# 数据库引擎
+engine = create_async_engine(
+    settings.DATABASE_URL,
+    echo=settings.DEBUG,
+    pool_pre_ping=True
+)
+
+# 会话工厂
+async_session_maker = async_sessionmaker(
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
+
+# 数据库会话依赖
+async def get_db() -> AsyncSession:
+    """获取数据库会话"""
+    async with async_session_maker() as session:
+        try:
+            yield session
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
+
+# 服务依赖
+from app.services.user_service import UserService
+
+def get_user_service(db: AsyncSession = Depends(get_db)) -> UserService:
+    """获取用户服务"""
+    return UserService(db)
+
+# 在路由中使用
+@router.post("/users")
+async def create_user(
+    user_in: UserCreate,
+    service: UserService = Depends(get_user_service)
+):
+    return await service.create_user(user_in)
+```
+
+---
+
+## 📦 配置管理
+
+### 配置类设计
+
+```python
+# app/core/config.py
+from pydantic_settings import BaseSettings
+from typing import Optional
+import secrets
+
+class Settings(BaseSettings):
+    """应用配置"""
+    
+    # 应用配置
+    PROJECT_NAME: str = "My App"
+    DEBUG: bool = False
+    API_V1_PREFIX: str = "/api/v1"
+    
+    # 数据库配置
+    DATABASE_URL: str
+    
+    # 安全配置
+    SECRET_KEY: str = secrets.token_urlsafe(32)
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ALGORITHM: str = "HS256"
+    
+    # CORS 配置
+    BACKEND_CORS_ORIGINS: list[str] = []
+    
+    # 缓存配置
+    REDIS_URL: Optional[str] = None
+    
+    class Config:
+        case_sensitive = True
+        env_file = ".env"
+
+# 单例模式
+@lru_cache()
+def get_settings() -> Settings:
+    """获取配置单例"""
+    return Settings()
+
+settings = get_settings()
+```
+
+### 环境配置
+
+```bash
+# .env.development
+DEBUG=True
+DATABASE_URL=sqlite+aiosqlite:///./dev.db
+BACKEND_CORS_ORIGINS=["http://localhost:5173"]
+
+# .env.production
+DEBUG=False
+DATABASE_URL=postgresql+asyncpg://user:pass@host/db
+BACKEND_CORS_ORIGINS=["https://example.com"]
+SECRET_KEY=your-secret-key-here
+```
+
+---
+
+## 🔒 安全架构
+
+### 认证架构
+
+```python
+# app/core/security.py
+from datetime import datetime, timedelta
+from typing import Optional
+from jose import jwt
+from passlib.context import CryptContext
+from app.core.config import settings
+
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+
+def create_access_token(
+    subject: str | UUID,
+    expires_delta: timedelta | None = None
+) -> str:
+    """创建访问令牌"""
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
+    to_encode = {
+        "exp": expire,
+        "sub": str(subject),
+        "iat": datetime.utcnow(),
+        "type": "access"
+    }
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """验证密码"""
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password: str) -> str:
+    """密码哈希"""
+    return pwd_context.hash(password)
+```
+
+### 授权架构
+
+```python
+# app/core/dependencies.py
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import jwt, JWTError
+from app.core.config import settings
+from app.models.user import User
+from app.db.session import get_db
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_PREFIX}/auth/login")
+
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+) -> User:
+    """获取当前用户"""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="无法验证凭证",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    
+    user = await db.get(User, user_id)
+    if user is None:
+        raise credentials_exception
+    
+    if not user.is_active:
+        raise HTTPException(status_code=400, detail="用户未激活")
+    
+    return user
+
+async def get_current_admin_user(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    """获取当前管理员用户"""
+    if current_user.role.name != "admin":
+        raise HTTPException(status_code=403, detail="权限不足")
+    return current_user
+```
+
+---
+
+## 💾 数据库架构
+
+### ORM 模型设计
+
+```python
+# app/models/user.py
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
+from app.db.base import Base
+from datetime import datetime
+
+class User(Base):
+    """用户模型"""
+    __tablename__ = "users"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    name = Column(String, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 外键
+    role_id = Column(Integer, ForeignKey("roles.id"))
+    role = relationship("Role", back_populates="users")
+    
+    # 关系
+    reservations = relationship("Reservation", back_populates="user")
+```
+
+### 数据库迁移
+
+```python
+# alembic/versions/001_create_users_table.py
+"""create users table
+
+Revision ID: 001
+Revises: 
+Create Date: 2026-03-14 10:00:00.000000
+
+"""
+from alembic import op
+import sqlalchemy as sa
+
+# revision identifiers
+revision = '001'
+down_revision = None
+branch_labels = None
+depends_on = None
+
+def upgrade() -> None:
+    op.create_table(
+        'users',
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('email', sa.String(), nullable=False),
+        sa.Column('name', sa.String(), nullable=False),
+        sa.Column('hashed_password', sa.String(), nullable=False),
+        sa.Column('is_active', sa.Boolean(), nullable=True),
+        sa.Column('created_at', sa.DateTime(), nullable=True),
+        sa.Column('updated_at', sa.DateTime(), nullable=True),
+        sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
+    op.create_index(op.f('ix_users_id'), 'users', ['id'], unique=False)
+
+def downgrade() -> None:
+    op.drop_index(op.f('ix_users_id'), table_name='users')
+    op.drop_index(op.f('ix_users_email'), table_name='users')
+    op.drop_table('users')
+```
+
+---
+
+## 🚀 性能优化架构
+
+### 缓存架构
+
+```python
+# app/core/cache.py
+import redis.asyncio as redis
+from typing import Optional
+from app.core.config import settings
+
+class Cache:
+    """缓存服务"""
+    
+    def __init__(self):
+        self.redis: Optional[redis.Redis] = None
+    
+    async def connect(self):
+        """连接 Redis"""
+        if settings.REDIS_URL:
+            self.redis = redis.from_url(settings.REDIS_URL)
+    
+    async def get(self, key: str) -> Optional[str]:
+        """获取缓存"""
+        if self.redis:
+            return await self.redis.get(key)
+        return None
+    
+    async def set(self, key: str, value: str, expire: int = 300):
+        """设置缓存"""
+        if self.redis:
+            await self.redis.set(key, value, ex=expire)
+    
+    async def delete(self, key: str):
+        """删除缓存"""
+        if self.redis:
+            await self.redis.delete(key)
+
+cache = Cache()
+```
+
+### 异步架构
+
+```python
+# 异步服务
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.models.user import User
+
+class UserService:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+    
+    async def get_user(self, user_id: int) -> User | None:
+        """异步获取用户"""
+        result = await self.db.execute(
+            select(User).where(User.id == user_id)
+        )
+        return result.scalar_one_or_none()
+    
+    async def create_user(self, data: dict) -> User:
+        """异步创建用户"""
+        user = User(**data)
+        self.db.add(user)
+        await self.db.commit()
+        await self.db.refresh(user)
+        return user
+```
+
+---
+
+## 📋 架构检查清单
+
+### 项目结构
+
+- [ ] 分层清晰（API/Service/Repository）
+- [ ] 职责分离明确
+- [ ] 依赖注入正确
+- [ ] 配置管理完善
+
+### 安全架构
+
+- [ ] 认证机制完善
+- [ ] 授权检查完整
+- [ ] 密码加密安全
+- [ ] 输入验证完善
+
+### 数据库架构
+
+- [ ] ORM 模型规范
+- [ ] 索引合理
+- [ ] 迁移脚本完整
+- [ ] 连接池配置
+
+### 性能优化
+
+- [ ] 缓存策略
+- [ ] 异步处理
+- [ ] 连接池配置
+- [ ] 查询优化
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[Google Cloud Architecture](https://cloud.google.com/architecture)** - Google 云架构
+- **[Microsoft Azure Architecture](https://docs.microsoft.com/en-us/azure/architecture/)** - Microsoft Azure 架构
+- **[FastAPI Best Practices](https://fastapi.tiangolo.com/)** - FastAPI 最佳实践
+- **[12-Factor App](https://12factor.net/)** - 十二要素应用
+
+### 学习资源
+
+- **[Full Stack FastAPI](https://github.com/tiangolo/full-stack-fastapi-postgresql)** - 全栈 FastAPI 模板
+- **[SQLAlchemy Documentation](https://docs.sqlalchemy.org/)** - SQLAlchemy 文档
+- **[Alembic Documentation](https://alembic.sqlalchemy.org/)** - Alembic 文档
+
+### 工具
+
+- **[FastAPI](https://fastapi.tiangolo.com/)** - FastAPI 框架
+- **[SQLAlchemy](https://www.sqlalchemy.org/)** - SQLAlchemy ORM
+- **[Alembic](https://alembic.sqlalchemy.org/)** - 数据库迁移
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，基于 Google/Microsoft/FastAPI 最佳实践 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🔴 高（核心技能）

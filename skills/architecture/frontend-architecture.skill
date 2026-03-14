@@ -1,0 +1,768 @@
+# Skill: 前端架构设计
+
+> 基于 Google、Microsoft、Vue3 最佳实践的前端架构设计技能
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🔴 高（核心技能）
+
+---
+
+## 📋 前置技能
+
+- ✅ [architecture-principles.skill](../architecture-principles.skill) - 架构设计原则
+- ✅ [code-review-vue.skill](../code-review/code-review-vue.skill) - Vue 代码审查
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[Google Frontend Architecture](https://cloud.google.com/architecture)** - Google 前端架构
+- **[Microsoft Web Development](https://docs.microsoft.com/en-us/azure/developer/javascript/)** - Microsoft Web 开发
+- **[Vue.js Best Practices](https://vuejs.org/guide/best-practices/)** - Vue 官方最佳实践
+- **[TypeScript Best Practices](https://www.typescriptlang.org/docs/)** - TypeScript 最佳实践
+
+### 行业最佳实践
+
+- **Component-Based Architecture** - 组件化架构
+- **State Management Patterns** - 状态管理模式
+- **Micro-frontends** - 微前端
+- **Server-Side Rendering (SSR)** - 服务端渲染
+
+---
+
+## 🏛️ Vue3 项目结构
+
+### 标准项目结构
+
+```
+frontend/
+├── public/                # 静态资源
+│   ├── favicon.ico
+│   └── ...
+├── src/
+│   ├── main.ts           # 应用入口
+│   ├── App.vue           # 根组件
+│   │
+│   ├── api/              # API 层
+│   │   ├── client.ts     # HTTP 客户端
+│   │   ├── auth.ts       # 认证 API
+│   │   └── ...
+│   │
+│   ├── assets/           # 资源文件
+│   │   ├── styles/       # 样式文件
+│   │   ├── images/       # 图片
+│   │   └── ...
+│   │
+│   ├── components/       # 组件
+│   │   ├── common/       # 通用组件
+│   │   │   ├── AppButton.vue
+│   │   │   └── ...
+│   │   └── business/     # 业务组件
+│   │       ├── UserCard.vue
+│   │       └── ...
+│   │
+│   ├── views/            # 页面视图
+│   │   ├── HomeView.vue
+│   │   ├── LoginView.vue
+│   │   └── ...
+│   │
+│   ├── router/           # 路由配置
+│   │   └── index.ts
+│   │
+│   ├── stores/           # 状态管理 (Pinia)
+│   │   ├── auth.ts
+│   │   └── ...
+│   │
+│   ├── composables/      # 组合式函数
+│   │   ├── useAuth.ts
+│   │   └── ...
+│   │
+│   ├── types/            # 类型定义
+│   │   └── index.ts
+│   │
+│   ├── utils/            # 工具函数
+│   │   ├── validators.ts
+│   │   └── ...
+│   │
+│   ├── schemas/          # 验证 Schema
+│   │   └── ...
+│   │
+│   └── plugins/          # 插件
+│       └── ...
+│
+├── tests/                # 测试
+│   ├── unit/
+│   └── e2e/
+│
+├── vite.config.ts        # Vite 配置
+├── tsconfig.json         # TypeScript 配置
+└── package.json          # 依赖配置
+```
+
+---
+
+## 📐 分层架构设计
+
+### 前端分层
+
+```
+┌─────────────────┐
+│  View Layer     │  ← 页面层 (views/)
+├─────────────────┤
+│ Component Layer │  ← 组件层 (components/)
+├─────────────────┤
+│  State Layer    │  ← 状态层 (stores/)
+├─────────────────┤
+│   API Layer     │  ← API 层 (api/)
+└─────────────────┘
+```
+
+### 各层职责
+
+#### View 层 (views/)
+```vue
+<!-- 职责 -->
+<!--
+- 页面级组件
+- 路由绑定
+- 组合业务组件
+- 数据获取
+
+原则:
+- 不包含复杂逻辑
+- 只负责页面布局
+- 使用组合式 API
+-->
+
+<template>
+  <div class="user-page">
+    <AppHeader />
+    <main>
+      <UserCard :user="user" />
+      <UserActions @delete="handleDelete" />
+    </main>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { useUserStore } from '@/stores/user'
+import UserCard from '@/components/UserCard.vue'
+import UserActions from '@/components/UserActions.vue'
+
+const userStore = useUserStore()
+const user = ref(null)
+
+onMounted(async () => {
+  user.value = await userStore.fetchUser()
+})
+
+const handleDelete = () => {
+  // 处理删除
+}
+</script>
+```
+
+#### Component 层 (components/)
+```vue
+<!-- 职责 -->
+<!--
+- 可复用组件
+- 接收 Props
+- 触发 Events
+- 无状态或局部状态
+
+原则:
+- 单一职责
+- 高内聚低耦合
+- 易于测试
+-->
+
+<template>
+  <div class="user-card">
+    <h3>{{ user.name }}</h3>
+    <p>{{ user.email }}</p>
+    <button @click="handleDelete">删除</button>
+  </div>
+</template>
+
+<script setup lang="ts">
+interface Props {
+  user: User
+}
+
+interface Emits {
+  (e: 'delete', id: number): void
+}
+
+const props = defineProps<Props>()
+const emit = defineEmits<Emits>()
+
+const handleDelete = () => {
+  emit('delete', props.user.id)
+}
+</script>
+```
+
+#### State 层 (stores/)
+```typescript
+// 职责
+// - 全局状态管理
+// - 业务逻辑
+// - 数据持久化
+// - API 调用
+
+// 原则:
+// - 单一数据源
+// - 可预测的状态变化
+// - 易于调试
+
+// stores/user.ts
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import { userApi } from '@/api/user'
+
+export const useUserStore = defineStore('user', () => {
+  // State
+  const currentUser = ref<User | null>(null)
+  const users = ref<User[]>([])
+  const loading = ref(false)
+  const error = ref<string | null>(null)
+
+  // Getters
+  const isLoggedIn = computed(() => !!currentUser.value)
+  const isAdmin = computed(() => currentUser.value?.role === 'admin')
+
+  // Actions
+  async function fetchUser() {
+    loading.value = true
+    try {
+      currentUser.value = await userApi.getCurrentUser()
+      return currentUser.value
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function deleteUser(id: number) {
+    await userApi.deleteUser(id)
+    users.value = users.value.filter(u => u.id !== id)
+  }
+
+  return {
+    currentUser,
+    users,
+    loading,
+    error,
+    isLoggedIn,
+    isAdmin,
+    fetchUser,
+    deleteUser
+  }
+})
+```
+
+#### API 层 (api/)
+```typescript
+// 职责
+// - HTTP 请求封装
+// - 请求/响应拦截
+// - 错误处理
+// - API 版本管理
+
+// 原则:
+// - 无状态
+// - 纯函数
+// - 易于 Mock
+
+// api/client.ts
+import axios from 'axios'
+
+const apiClient = axios.create({
+  baseURL: '/api/v1',
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
+
+// 请求拦截器
+apiClient.interceptors.request.use(config => {
+  const token = localStorage.getItem('access_token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+// 响应拦截器
+apiClient.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response?.status === 401) {
+      // Token 过期，跳转登录
+    }
+    return Promise.reject(error)
+  }
+)
+
+export default apiClient
+
+// api/user.ts
+import apiClient from './client'
+import type { User } from '@/types'
+
+export const userApi = {
+  getCurrentUser: () => apiClient.get<User>('/auth/me'),
+  deleteUser: (id: number) => apiClient.delete(`/users/${id}`),
+  getUsers: (page: number, pageSize: number) => 
+    apiClient.get<User[]>('/users', { params: { page, page_size: pageSize } })
+}
+```
+
+---
+
+## 🎨 组件设计模式
+
+### 基础组件模式
+
+```vue
+<!-- components/common/AppButton.vue -->
+<template>
+  <button :class="['app-button', `app-button--${type}`]" :disabled="disabled">
+    <slot></slot>
+  </button>
+</template>
+
+<script setup lang="ts">
+interface Props {
+  type?: 'primary' | 'secondary' | 'danger'
+  disabled?: boolean
+}
+
+withDefaults(defineProps<Props>(), {
+  type: 'primary',
+  disabled: false
+})
+</script>
+```
+
+### 容器组件模式
+
+```vue
+<!-- components/UserList.vue -->
+<template>
+  <div class="user-list">
+    <UserCard 
+      v-for="user in users" 
+      :key="user.id"
+      :user="user"
+      @delete="handleDelete"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useUserStore } from '@/stores/user'
+import UserCard from './UserCard.vue'
+
+const userStore = useUserStore()
+const users = computed(() => userStore.users)
+
+const handleDelete = (id: number) => {
+  userStore.deleteUser(id)
+}
+</script>
+```
+
+### 智能/展示组件模式
+
+```vue
+<!-- 智能组件 (Smart Component) -->
+<!-- views/UserPage.vue -->
+<template>
+  <UserList 
+    :users="users"
+    :loading="loading"
+    @delete="handleDelete"
+  />
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { useUserStore } from '@/stores/user'
+import UserList from '@/components/UserList.vue'
+
+const userStore = useUserStore()
+const users = ref([])
+const loading = ref(true)
+
+onMounted(async () => {
+  users.value = await userStore.fetchUsers()
+  loading.value = false
+})
+
+const handleDelete = (id: number) => {
+  userStore.deleteUser(id)
+}
+</script>
+
+---
+
+<!-- 展示组件 (Presentational Component) -->
+<!-- components/UserList.vue -->
+<template>
+  <div v-if="loading">加载中...</div>
+  <div v-else>
+    <UserCard 
+      v-for="user in users" 
+      :key="user.id"
+      :user="user"
+      @delete="$emit('delete', user.id)"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+defineProps<{
+  users: User[]
+  loading: boolean
+}>()
+
+defineEmits<{
+  (e: 'delete', id: number): void
+}>()
+</script>
+```
+
+---
+
+## 📦 状态管理架构
+
+### Pinia Store 设计
+
+```typescript
+// stores/auth.ts
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import { authApi } from '@/api/auth'
+import router from '@/router'
+
+export const useAuthStore = defineStore('auth', () => {
+  // State
+  const user = ref<User | null>(null)
+  const token = ref<string | null>(null)
+  const loading = ref(false)
+  const error = ref<string | null>(null)
+
+  // Getters
+  const isAuthenticated = computed(() => !!token.value)
+  const isAdmin = computed(() => user.value?.role === 'admin')
+
+  // Actions
+  async function login(email: string, password: string) {
+    loading.value = true
+    try {
+      const response = await authApi.login(email, password)
+      token.value = response.access_token
+      user.value = response.user
+      return response
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function logout() {
+    try {
+      await authApi.logout()
+    } finally {
+      token.value = null
+      user.value = null
+      router.push('/login')
+    }
+  }
+
+  async function refreshToken() {
+    try {
+      const response = await authApi.refreshToken()
+      token.value = response.access_token
+    } catch (err) {
+      await logout()
+      throw err
+    }
+  }
+
+  return {
+    user,
+    token,
+    loading,
+    error,
+    isAuthenticated,
+    isAdmin,
+    login,
+    logout,
+    refreshToken
+  }
+})
+```
+
+### Composable 模式
+
+```typescript
+// composables/useAuth.ts
+import { computed } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+
+export function useAuth() {
+  const authStore = useAuthStore()
+  
+  const isAuthenticated = computed(() => authStore.isAuthenticated)
+  const isAdmin = computed(() => authStore.isAdmin)
+  const user = computed(() => authStore.user)
+  
+  const login = async (email: string, password: string) => {
+    return await authStore.login(email, password)
+  }
+  
+  const logout = async () => {
+    await authStore.logout()
+  }
+  
+  const hasRole = (role: string) => {
+    return user.value?.role === role
+  }
+  
+  return {
+    isAuthenticated,
+    isAdmin,
+    user,
+    login,
+    logout,
+    hasRole
+  }
+}
+
+// 使用
+<script setup lang="ts">
+import { useAuth } from '@/composables/useAuth'
+
+const { isAuthenticated, login, logout } = useAuth()
+</script>
+```
+
+---
+
+## 🛣️ 路由架构
+
+### 路由配置
+
+```typescript
+// router/index.ts
+import { createRouter, createWebHistory } from 'vue-router'
+import type { RouteRecordRaw } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+
+const routes: RouteRecordRaw[] = [
+  {
+    path: '/',
+    name: 'Home',
+    component: () => import('@/views/HomeView.vue')
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('@/views/LoginView.vue'),
+    meta: { requiresGuest: true }
+  },
+  {
+    path: '/admin',
+    name: 'Admin',
+    component: () => import('@/views/AdminView.vue'),
+    meta: { requiresAuth: true, requiresRole: 'admin' }
+  }
+]
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes
+})
+
+// 路由守卫
+router.beforeEach(async (to, from, next) => {
+  const authStore = useAuthStore()
+  
+  // 需要认证
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    next('/login')
+    return
+  }
+  
+  // 需要访客
+  if (to.meta.requiresGuest && authStore.isAuthenticated) {
+    next('/')
+    return
+  }
+  
+  // 需要角色
+  if (to.meta.requiresRole) {
+    if (!authStore.hasRole(to.meta.requiresRole)) {
+      next('/unauthorized')
+      return
+    }
+  }
+  
+  next()
+})
+
+export default router
+```
+
+---
+
+## 🚀 性能优化架构
+
+### 代码分割
+
+```typescript
+// 路由懒加载
+const routes = [
+  {
+    path: '/dashboard',
+    component: () => import('@/views/DashboardView.vue')
+  },
+  {
+    path: '/settings',
+    component: () => import('@/views/SettingsView.vue')
+  }
+]
+
+// 组件懒加载
+const HeavyComponent = defineAsyncComponent(
+  () => import('@/components/HeavyComponent.vue')
+)
+```
+
+### 缓存策略
+
+```vue
+<!-- 使用 KeepAlive -->
+<template>
+  <router-view v-slot="{ Component, route }">
+    <keep-alive :include="['UserList', 'ProductList']">
+      <component :is="Component" :key="route.name" />
+    </keep-alive>
+  </router-view>
+</template>
+
+<script setup lang="ts">
+// 缓存特定组件
+</script>
+```
+
+### 虚拟滚动
+
+```vue
+<!-- 大列表优化 -->
+<template>
+  <RecycleScroller
+    :items="largeList"
+    :item-size="50"
+    key-field="id"
+  >
+    <template #default="{ item }">
+      <div class="item">{{ item.name }}</div>
+    </template>
+  </RecycleScroller>
+</template>
+
+<script setup lang="ts">
+import { RecycleScroller } from 'vue-virtual-scroller'
+import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
+</script>
+```
+
+---
+
+## 📋 架构检查清单
+
+### 项目结构
+
+- [ ] 分层清晰（View/Component/State/API）
+- [ ] 目录结构合理
+- [ ] 文件命名规范
+- [ ] 资源管理完善
+
+### 组件设计
+
+- [ ] 组件职责单一
+- [ ] Props/Emits 定义完整
+- [ ] 可复用性高
+- [ ] 易于测试
+
+### 状态管理
+
+- [ ] Pinia Store 设计合理
+- [ ] 状态变化可预测
+- [ ] 无状态泄漏
+- [ ] Composable 复用
+
+### 路由架构
+
+- [ ] 路由配置清晰
+- [ ] 路由守卫完善
+- [ ] 懒加载配置
+- [ ] 错误处理
+
+### 性能优化
+
+- [ ] 代码分割
+- [ ] 组件缓存
+- [ ] 虚拟滚动
+- [ ] 图片优化
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[Google Frontend Architecture](https://cloud.google.com/architecture)** - Google 前端架构
+- **[Microsoft Web Development](https://docs.microsoft.com/en-us/azure/developer/javascript/)** - Microsoft Web 开发
+- **[Vue.js Best Practices](https://vuejs.org/guide/best-practices/)** - Vue 官方最佳实践
+- **[TypeScript Best Practices](https://www.typescriptlang.org/docs/)** - TypeScript 最佳实践
+
+### 学习资源
+
+- **[Vue.js Documentation](https://vuejs.org/)** - Vue 官方文档
+- **[Pinia Documentation](https://pinia.vuejs.org/)** - Pinia 文档
+- **[Vite Documentation](https://vitejs.dev/)** - Vite 文档
+
+### 工具
+
+- **[Vue DevTools](https://devtools.vuejs.org/)** - Vue 开发者工具
+- **[Volar](https://volarjs.dev/)** - Vue 语言服务
+- **[Playwright](https://playwright.dev/)** - E2E 测试
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，基于 Google/Microsoft/Vue3 最佳实践 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🔴 高（核心技能）

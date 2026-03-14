@@ -1,0 +1,810 @@
+# Skill: 系统化调试
+
+> 基于 Google、Microsoft、Stripe 等最佳实践的系统化调试技能
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🔴 高（核心技能）
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[Google Engineering Practices](https://google.github.io/eng-practices/)** - Google 工程实践
+- **[Microsoft Debugging Best Practices](https://docs.microsoft.com/en-us/archive/msdn-magazine/)** - Microsoft 调试指南
+- **[Stripe Debugging Culture](https://stripe.com/blog)** - Stripe 调试文化
+- **[AWS Well-Architected Framework](https://aws.amazon.com/architecture/well-architected/)** - AWS 架构框架
+
+### 行业最佳实践
+
+- **The Scientific Method in Debugging** - 科学方法在调试中的应用
+- **Rubber Duck Debugging** - 橡皮鸭调试法
+- **5 Why Analysis** - 5 Why 根因分析法
+- **Debugging by Bisection** - 二分法调试
+
+---
+
+## 🎯 核心原则
+
+### 1. 科学方法 (Scientific Method)
+
+> "不要猜测，要验证。"
+> — Google Engineering Practices
+
+**实践**:
+```
+1. 观察现象 (Observation)
+   - 收集问题现象
+   - 记录相关数据
+
+2. 提出假设 (Hypothesis)
+   - 列出可能原因
+   - 按可能性排序
+
+3. 设计实验 (Experiment)
+   - 设计验证方案
+   - 执行验证测试
+
+4. 分析结果 (Analysis)
+   - 分析验证结果
+   - 确认或排除假设
+
+5. 得出结论 (Conclusion)
+   - 确定根本原因
+   - 制定修复方案
+```
+
+### 2. 系统性方法 (Systematic Approach)
+
+> "从简单到复杂，从已知到未知。"
+> — Microsoft Debugging Guide
+
+**实践**:
+- ✅ 先复现问题，再开始调试
+- ✅ 先检查日志，再使用调试器
+- ✅ 先验证假设，再修改代码
+- ✅ 先修复根因，再处理症状
+
+### 3. 可观测性优先 (Observability First)
+
+> "没有日志的调试是盲目的。"
+> — Stripe Engineering
+
+**实践**:
+- ✅ 结构化日志（JSON 格式）
+- ✅ 包含上下文信息（trace_id, user_id）
+- ✅ 分级日志（DEBUG, INFO, WARN, ERROR）
+- ✅ 集中式日志管理
+
+### 4. 知识沉淀 (Knowledge Sharing)
+
+> "每次调试都是学习机会。"
+> — Google SRE Book
+
+**实践**:
+- ✅ 记录调试过程
+- ✅ 更新文档和 Runbook
+- ✅ 团队分享经验
+- ✅ 建立案例库
+
+---
+
+## 📏 调试流程
+
+### 步骤 1: 问题复现
+
+#### 1.1 收集问题现象
+
+**检查项**:
+```markdown
+- [ ] 问题现象描述清晰
+- [ ] 错误消息完整
+- [ ] 堆栈跟踪信息
+- [ ] 发生时间和频率
+- [ ] 影响范围和用户
+```
+
+**信息收集模板**:
+```markdown
+## 问题现象
+- 现象描述：
+- 错误消息：
+- 堆栈跟踪：
+- 发生时间：
+- 发生频率：
+- 影响用户：
+```
+
+#### 1.2 确定复现步骤
+
+**检查项**:
+```markdown
+- [ ] 复现步骤清晰
+- [ ] 可以稳定复现
+- [ ] 最小复现案例
+- [ ] 环境信息完整
+```
+
+**复现步骤模板**:
+```markdown
+## 复现步骤
+1. 访问 /api/v1/users
+2. 发送 POST 请求，参数：{...}
+3. 观察响应：500 Internal Server Error
+4. 查看日志：KeyError: 'email'
+
+## 环境信息
+- 环境：生产/测试/开发
+- 版本：v1.2.3
+- 浏览器：Chrome 120
+- OS: macOS 14.0
+```
+
+#### 1.3 创建最小复现案例
+
+**原则**:
+```
+- 最小化：移除无关代码
+- 独立性：不依赖外部系统
+- 可重复：可以多次执行
+- 清晰性：代码易于理解
+```
+
+**示例**:
+```python
+# ❌ 复杂复现
+def test_issue():
+    # 100 行代码，包含数据库、网络调用
+    ...
+
+# ✅ 最小复现
+def test_issue():
+    data = {'name': 'test'}
+    result = process_data(data)  # KeyError: 'email'
+    assert result is not None
+```
+
+---
+
+### 步骤 2: 信息收集
+
+#### 2.1 查看应用日志
+
+**日志级别使用**:
+```python
+# DEBUG: 详细调试信息
+logger.debug(f"处理数据：{data}")
+
+# INFO: 正常流程信息
+logger.info(f"用户 {user_id} 登录成功")
+
+# WARN: 警告信息
+logger.warning(f"API 调用失败，重试中：{error}")
+
+# ERROR: 错误信息
+logger.error(f"处理失败：{error}", exc_info=True)
+
+# CRITICAL: 严重错误
+logger.critical(f"系统故障：{error}", exc_info=True)
+```
+
+**日志检查清单**:
+```markdown
+- [ ] ERROR 级别日志
+- [ ] WARN 级别日志
+- [ ] 异常堆栈跟踪
+- [ ] 请求/响应信息
+- [ ] 数据库查询日志
+- [ ] 外部 API 调用日志
+```
+
+#### 2.2 查看系统日志
+
+**系统日志来源**:
+```bash
+# Linux 系统日志
+/var/log/syslog
+/var/log/messages
+dmesg
+
+# 应用日志
+/var/log/nginx/error.log
+/var/log/postgresql/postgresql.log
+
+# 容器日志
+docker logs <container_id>
+kubectl logs <pod_name>
+```
+
+#### 2.3 检查监控指标
+
+**关键指标**:
+```markdown
+### 应用指标
+- [ ] QPS (每秒请求数)
+- [ ] 响应时间 (P50, P95, P99)
+- [ ] 错误率
+- [ ] 活跃用户数
+
+### 系统指标
+- [ ] CPU 使用率
+- [ ] 内存使用率
+- [ ] 磁盘使用率
+- [ ] 网络 IO
+
+### 数据库指标
+- [ ] 连接数
+- [ ] 慢查询数
+- [ ] 锁等待
+- [ ] 缓存命中率
+```
+
+#### 2.4 收集用户反馈
+
+**信息来源**:
+```markdown
+- [ ] 用户报告
+- [ ] 客服工单
+- [ ] 社交媒体
+- [ ] 应用评价
+- [ ] 监控告警
+```
+
+---
+
+### 步骤 3: 提出假设
+
+#### 3.1 列出所有可能原因
+
+**头脑风暴方法**:
+```markdown
+### 可能原因列表
+1. 代码逻辑错误
+2. 数据问题（脏数据、缺失数据）
+3. 配置问题（环境变量、配置文件）
+4. 依赖问题（服务不可用、API 变更）
+5. 资源问题（内存不足、磁盘满）
+6. 网络问题（延迟、丢包）
+7. 并发问题（竞态条件、死锁）
+8. 缓存问题（脏缓存、缓存穿透）
+```
+
+#### 3.2 按可能性排序
+
+**排序标准**:
+```
+1. 最近变更（代码、配置、数据）
+2. 常见问题（历史高频问题）
+3. 影响范围（影响越大越优先）
+4. 验证成本（验证越简单越优先）
+```
+
+**优先级矩阵**:
+```
+         验证成本低     验证成本高
+可能性高    优先验证       其次验证
+可能性低    最后验证       暂缓验证
+```
+
+#### 3.3 设计验证方案
+
+**验证方案设计**:
+```markdown
+## 假设：代码逻辑错误
+
+### 验证方法
+1. 添加调试日志
+2. 使用调试器
+3. 编写单元测试
+
+### 预期结果
+- 如果假设正确：日志显示...
+- 如果假设错误：日志显示...
+
+### 验证步骤
+1. 在第 X 行添加日志
+2. 复现问题
+3. 查看日志输出
+```
+
+---
+
+### 步骤 4: 验证假设
+
+#### 4.1 逐个验证排除
+
+**验证记录模板**:
+```markdown
+## 假设验证记录
+
+### 假设 1: 代码逻辑错误
+- 验证方法：添加调试日志
+- 验证结果：❌ 排除
+- 原因：日志显示代码未执行到该行
+
+### 假设 2: 数据问题
+- 验证方法：检查数据库记录
+- 验证结果：✅ 确认
+- 原因：发现缺失 email 字段的数据
+```
+
+#### 4.2 二分法定位
+
+**二分法流程**:
+```
+1. 确定问题范围（100 行代码）
+         ↓
+2. 在中间添加检查点（50 行）
+         ↓
+3. 验证哪一半有问题
+         ↓
+4. 重复步骤 2-3
+         ↓
+5. 定位到具体代码（1-2 行）
+```
+
+**示例**:
+```python
+# 问题：函数返回错误结果
+
+# 第 1 次二分：检查中间点
+def process_data(data):
+    step1 = preprocess(data)
+    print(f"Step 1: {step1}")  # 检查点 1
+    
+    step2 = transform(step1)
+    print(f"Step 2: {step2}")  # 检查点 2
+    
+    result = validate(step2)
+    print(f"Result: {result}")  # 检查点 3
+    
+    return result
+
+# 根据输出确定哪一步有问题
+```
+
+#### 4.3 记录验证结果
+
+**验证日志**:
+```markdown
+## 调试日志
+
+### 2026-03-14 10:30:00
+- 假设：数据问题
+- 验证：检查数据库
+- 结果：发现 3 条缺失 email 的记录
+- 结论：假设确认
+
+### 2026-03-14 10:45:00
+- 假设：代码未验证必填字段
+- 验证：检查代码
+- 结果：确实缺少验证
+- 结论：根因确认
+```
+
+---
+
+### 步骤 5: 定位根因
+
+#### 5.1 5 Why 分析法
+
+**分析模板**:
+```markdown
+## 5 Why 分析
+
+问题：API 返回 500 错误
+
+1. 为什么返回 500？
+   → 因为代码抛出 KeyError: 'email'
+
+2. 为什么抛出 KeyError？
+   → 因为访问了不存在的字典键
+
+3. 为什么访问不存在的键？
+   → 因为数据缺少 email 字段
+
+4. 为什么数据缺少 email 字段？
+   → 因为创建接口未验证必填字段
+
+5. 为什么未验证必填字段？
+   → 因为缺少输入验证逻辑（根本原因）
+```
+
+#### 5.2 确定根本原因
+
+**根因确认标准**:
+```
+✅ 可以解释所有现象
+✅ 可以复现问题
+✅ 修复后问题消失
+✅ 防止问题再发
+```
+
+#### 5.3 分析影响范围
+
+**影响分析**:
+```markdown
+## 影响范围
+
+### 功能影响
+- 受影响功能：用户创建、用户更新
+- 影响程度：高（功能不可用）
+
+### 用户影响
+- 影响用户：所有新用户
+- 影响数量：约 100 用户/天
+
+### 数据影响
+- 受影响数据：用户表
+- 数据量：3 条脏数据
+```
+
+---
+
+### 步骤 6: 修复验证
+
+#### 6.1 实施修复
+
+**修复原则**:
+```
+- 针对根因修复，而非症状
+- 最小化修改范围
+- 添加必要的验证
+- 考虑向后兼容
+```
+
+**修复示例**:
+```python
+# ❌ 修复症状
+try:
+    email = data['email']
+except KeyError:
+    email = None  # 临时规避
+
+# ✅ 修复根因
+from pydantic import BaseModel, EmailStr
+
+class UserCreate(BaseModel):
+    email: EmailStr  # 自动验证必填和格式
+    name: str
+    
+# 在 API 层验证
+user_in = UserCreate(**data)  # 验证失败会抛出异常
+```
+
+#### 6.2 验证修复效果
+
+**验证检查清单**:
+```markdown
+- [ ] 问题不再复现
+- [ ] 原有功能正常
+- [ ] 无副作用
+- [ ] 性能无退化
+- [ ] 日志正常
+```
+
+#### 6.3 回归测试
+
+**测试范围**:
+```markdown
+- [ ] 修复的问题
+- [ ] 相关功能
+- [ ] 核心功能
+- [ ] 边界条件
+```
+
+#### 6.4 监控观察
+
+**监控重点**:
+```markdown
+### 短期监控（24 小时）
+- [ ] 错误率
+- [ ] 异常数量
+- [ ] 用户反馈
+
+### 长期监控（1 周）
+- [ ] 问题是否再发
+- [ ] 性能指标
+- [ ] 用户满意度
+```
+
+---
+
+### 步骤 7: 知识沉淀
+
+#### 7.1 记录调试过程
+
+**调试报告模板**:
+```markdown
+# 调试报告
+
+## 问题描述
+API 返回 500 Internal Server Error
+
+## 影响范围
+- 影响用户：所有新用户
+- 影响功能：用户创建
+- 发生时间：2026-03-14 10:00
+
+## 复现步骤
+1. POST /api/v1/users
+2. 参数：{"name": "test"}
+3. 响应：500 error
+
+## 信息收集
+### 日志
+```
+[ERROR] 2026-03-14 10:00:00 - KeyError: 'email'
+```
+
+### 监控
+- 错误率：从 0.1% 上升到 10%
+- 影响请求：约 100 次/小时
+
+## 假设与验证
+| 假设 | 验证方法 | 结果 |
+|------|---------|------|
+| 代码逻辑错误 | 添加日志 | ❌ 排除 |
+| 数据问题 | 检查数据库 | ✅ 确认 |
+| 配置问题 | 检查配置 | ❌ 排除 |
+
+## 根因分析
+5 Why 分析：
+1. 为什么 500？→ KeyError: 'email'
+2. 为什么 KeyError？→ 访问不存在的键
+3. 为什么不存在？→ 数据缺少 email 字段
+4. 为什么缺少？→ 接口未验证必填字段
+5. 为什么未验证？→ 缺少输入验证逻辑（根因）
+
+## 修复方案
+1. 添加 Pydantic schema 验证
+2. 清理脏数据
+3. 添加单元测试
+
+## 验证结果
+- [x] 修复已实施
+- [x] 验证通过
+- [x] 回归测试通过
+- [x] 监控正常
+
+## 防止再发
+- [x] 添加输入验证
+- [x] 添加单元测试
+- [x] 更新 API 文档
+- [ ] 团队分享（计划 2026-03-21）
+```
+
+#### 7.2 更新文档
+
+**文档更新清单**:
+```markdown
+- [ ] API 文档
+- [ ] Runbook
+- [ ] FAQ
+- [ ] 监控告警配置
+- [ ] 测试用例
+```
+
+#### 7.3 团队分享
+
+**分享内容**:
+```markdown
+- 问题现象和影响
+- 调试过程和方法
+- 根本原因
+- 修复方案
+- 防止再发措施
+- 经验教训
+```
+
+---
+
+## 🔧 调试工具箱
+
+### 日志工具
+
+**Python**:
+```python
+# 标准日志
+import logging
+logger = logging.getLogger(__name__)
+
+# 结构化日志
+import structlog
+logger = structlog.get_logger()
+
+# 日志配置
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+```
+
+**JavaScript**:
+```javascript
+// 标准日志
+console.log('Info')
+console.error('Error')
+console.warn('Warning')
+
+// 结构化日志
+import winston from 'winston'
+const logger = winston.createLogger({
+  format: winston.format.json(),
+  transports: [new winston.transports.File({ filename: 'app.log' })]
+})
+```
+
+### 调试器
+
+**Python**:
+```python
+# pdb 调试
+import pdb; pdb.set_trace()
+
+# ipdb (增强版)
+import ipdb; ipdb.set_trace()
+
+# VS Code 调试
+# 设置断点，使用调试面板
+```
+
+**JavaScript**:
+```javascript
+// Chrome DevTools
+debugger;
+
+// Node.js Inspector
+node --inspect app.js
+```
+
+### 性能分析
+
+**Python**:
+```bash
+# cProfile
+python -m cProfile app.py
+
+# py-spy
+py-spy record -- python app.py
+
+# memory_profiler
+@mprof.profile
+def my_function():
+    ...
+```
+
+**JavaScript**:
+```bash
+# Chrome Profiler
+# 打开 DevTools → Performance
+
+# clinic.js
+clinic doctor -- node app.js
+```
+
+### 网络工具
+
+```bash
+# API 测试
+curl -X GET http://api.example.com/users
+http GET http://api.example.com/users
+
+# 网络抓包
+wireshark
+tcpdump -i eth0 port 80
+
+# 性能测试
+ab -n 1000 -c 10 http://api.example.com/
+```
+
+---
+
+## 📋 调试检查清单
+
+### 问题定位
+
+- [ ] 问题是否可以稳定复现
+- [ ] 复现步骤是否清晰
+- [ ] 最小复现案例
+- [ ] 环境信息完整
+
+### 信息收集
+
+- [ ] 应用日志（ERROR, WARN）
+- [ ] 系统日志
+- [ ] 监控指标
+- [ ] 用户反馈
+
+### 假设验证
+
+- [ ] 列出所有可能原因（至少 3 个）
+- [ ] 按可能性排序
+- [ ] 设计验证方案
+- [ ] 记录验证结果
+
+### 根因分析
+
+- [ ] 5 Why 分析
+- [ ] 确定根本原因
+- [ ] 分析影响范围
+- [ ] 制定修复方案
+
+### 修复验证
+
+- [ ] 修复已实施
+- [ ] 验证通过
+- [ ] 回归测试通过
+- [ ] 监控正常
+
+### 知识沉淀
+
+- [ ] 调试报告
+- [ ] 文档更新
+- [ ] 团队分享
+- [ ] 防止再发措施
+
+---
+
+## 📊 效果对比
+
+### ❌ 低效调试
+
+```
+1. 看到错误直接改代码
+2. 改完再试，不行再改
+3. 试了 10 次，终于好了
+4. 不知道为什么好
+5. 下次还犯同样错误
+```
+
+### ✅ 高效调试
+
+```
+1. 复现问题，收集信息
+2. 提出假设，设计验证
+3. 逐个验证，定位根因
+4. 针对根因修复
+5. 验证修复，记录过程
+6. 团队分享，防止再发
+```
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[Google Engineering Practices](https://google.github.io/eng-practices/)** - Google 工程实践
+- **[Microsoft Debugging Best Practices](https://docs.microsoft.com/en-us/archive/msdn-magazine/)** - Microsoft 调试指南
+- **[Stripe Debugging Culture](https://stripe.com/blog)** - Stripe 调试文化
+- **[AWS Well-Architected Framework](https://aws.amazon.com/architecture/well-architected/)** - AWS 架构框架
+
+### 学习资源
+
+- **[The Scientific Method in Debugging](https://www.snellman.net/blog/archive/2016-05-16-scientific-method-debugging/)** - 科学方法在调试中的应用
+- **[Rubber Duck Debugging](https://rubberduckdebugging.com/)** - 橡皮鸭调试法
+- **[5 Why Analysis](https://www.mindtools.com/pages/article/newTMC_5W.htm)** - 5 Why 分析法
+- **[Debugging by Bisection](https://www.expatsoftware.com/blog/2009/05/debugging-by-bisection.aspx)** - 二分法调试
+
+### 工具文档
+
+- **[Python logging](https://docs.python.org/3/library/logging.html)** - Python 日志
+- **[Chrome DevTools](https://developer.chrome.com/docs/devtools/)** - Chrome 调试工具
+- **[VS Code Debugging](https://code.visualstudio.com/docs/editor/debugging)** - VS Code 调试
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，基于 Google/Microsoft/Stripe 最佳实践 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🔴 高（核心技能）

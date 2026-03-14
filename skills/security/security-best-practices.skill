@@ -1,0 +1,507 @@
+# Skill: 安全最佳实践
+
+> 基于 OWASP、CIS、Google 安全最佳实践的安全技能
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🟡 中（核心技能）
+
+---
+
+## 📋 前置技能
+
+- ✅ [architecture-principles.skill](../architecture-principles.skill) - 架构设计原则
+- ✅ [backend-architecture.skill](../backend-architecture.skill) - 后端架构设计
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[OWASP Top 10](https://owasp.org/www-project-top-ten/)** - OWASP 十大安全风险
+- **[OWASP API Security Top 10](https://owasp.org/www-project-api-security/)** - OWASP API 安全十大风险
+- **[CIS Benchmarks](https://www.cisecurity.org/cis-benchmarks/)** - CIS 安全基准
+- **[Google Security Best Practices](https://cloud.google.com/security/best-practices)** - Google 安全最佳实践
+
+### 行业最佳实践
+
+- **Defense in Depth** - 纵深防御
+- **Least Privilege** - 最小权限
+- **Secure by Default** - 默认安全
+- **Zero Trust** - 零信任
+
+---
+
+## 🔒 应用安全
+
+### OWASP Top 10 防护
+
+#### 1. 注入攻击防护
+
+```python
+# ❌ 不安全：SQL 注入
+query = f"SELECT * FROM users WHERE email = '{email}'"
+db.execute(query)
+
+# ✅ 安全：参数化查询
+query = "SELECT * FROM users WHERE email = :email"
+db.execute(query, {"email": email})
+
+# ❌ 不安全：命令注入
+os.system(f"ls {user_input}")
+
+# ✅ 安全：使用 subprocess
+subprocess.run(["ls", user_input], check=True)
+
+# ❌ 不安全：NoSQL 注入
+db.users.find({"email": user_input})
+
+# ✅ 安全：使用操作符
+db.users.find({"email": {"$eq": user_input}})
+```
+
+#### 2. XSS 防护
+
+```vue
+<!-- ❌ 不安全：v-html 滥用 -->
+<template>
+  <div v-html="userInput"></div>
+</template>
+
+<!-- ✅ 安全：文本插值 -->
+<template>
+  <div>{{ userInput }}</div>
+</template>
+
+<!-- ✅ 必须使用 v-html 时 -->
+<template>
+  <div v-html="sanitizeHtml(userInput)"></div>
+</template>
+
+<script setup lang="ts">
+import DOMPurify from 'dompurify'
+
+const sanitizeHtml = (html: string) => {
+  return DOMPurify.sanitize(html)
+}
+</script>
+```
+
+```python
+# ✅ 后端输出编码
+from markupsafe import escape
+
+def render_user_input(user_input: str) -> str:
+    return f"<div>{escape(user_input)}</div>"
+```
+
+#### 3. 认证安全
+
+```python
+# ✅ 安全密码存储
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+# ✅ 安全 Token 管理
+from datetime import datetime, timedelta
+from jose import jwt
+
+def create_access_token(subject: str, expires_delta: timedelta):
+    expire = datetime.utcnow() + expires_delta
+    to_encode = {
+        "exp": expire,
+        "sub": subject,
+        "iat": datetime.utcnow(),
+        "jti": str(uuid.uuid4())  # Token ID
+    }
+    return jwt.encode(to_encode, SECRET_KEY, algorithm="RS256")
+
+# ✅ Token 撤销列表
+class TokenBlacklist:
+    def __init__(self, redis_client):
+        self.redis = redis_client
+    
+    def blacklist(self, token: str, expire_time: datetime):
+        ttl = (expire_time - datetime.utcnow()).total_seconds()
+        self.redis.setex(f"blacklist:{token}", int(ttl), "1")
+    
+    def is_blacklisted(self, token: str) -> bool:
+        return self.redis.exists(f"blacklist:{token}")
+```
+
+#### 4. 敏感数据保护
+
+```python
+# ✅ 数据加密
+from cryptography.fernet import Fernet
+
+class DataEncryption:
+    def __init__(self, key: bytes):
+        self.cipher = Fernet(key)
+    
+    def encrypt(self, data: str) -> str:
+        return self.cipher.encrypt(data.encode()).decode()
+    
+    def decrypt(self, encrypted_data: str) -> str:
+        return self.cipher.decrypt(encrypted_data.encode()).decode()
+
+# ✅ 数据库加密
+from sqlalchemy_utils import EncryptedType
+
+class User(Base):
+    __tablename__ = "users"
+    
+    id = Column(Integer, primary_key=True)
+    email = Column(String)
+    ssn = Column(EncryptedType(String, encryption_key))  # 加密存储
+```
+
+---
+
+## 🔐 API 安全
+
+### OWASP API Security Top 10 防护
+
+#### 1. 对象级授权检查
+
+```python
+# ❌ 不安全：缺少授权检查
+@router.get("/orders/{order_id}")
+async def get_order(order_id: int, current_user: User = Depends(get_current_user)):
+    order = await db.get(Order, order_id)
+    return order
+
+# ✅ 安全：对象级授权检查
+@router.get("/orders/{order_id}")
+async def get_order(order_id: int, current_user: User = Depends(get_current_user)):
+    order = await db.get(Order, order_id)
+    
+    if not order:
+        raise HTTPException(status_code=404, detail="订单不存在")
+    
+    # 检查所有权或管理员权限
+    if order.user_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="无权访问该订单")
+    
+    return order
+```
+
+#### 2. 速率限制
+
+```python
+# ✅ 使用 slowapi
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
+
+@router.post("/login")
+@limiter.limit("5/minute")  # 每分钟最多 5 次
+async def login(request: Request, form_data: OAuth2PasswordRequestForm):
+    ...
+
+@router.post("/register")
+@limiter.limit("3/hour")  # 每小时最多 3 次
+async def register(request: Request, user_in: UserCreate):
+    ...
+```
+
+#### 3. 输入验证
+
+```python
+# ✅ 使用 Pydantic 验证
+from pydantic import BaseModel, EmailStr, Field, validator
+import re
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=8, max_length=128)
+    name: str = Field(..., min_length=1, max_length=100)
+    
+    @validator('password')
+    def validate_password(cls, v):
+        if not re.search(r'[A-Z]', v):
+            raise ValueError('密码必须包含大写字母')
+        if not re.search(r'[a-z]', v):
+            raise ValueError('密码必须包含小写字母')
+        if not re.search(r'\d', v):
+            raise ValueError('密码必须包含数字')
+        return v
+    
+    @validator('name')
+    def validate_name(cls, v):
+        if not re.match(r'^[\u4e00-\u9fa5a-zA-Z\s]+$', v):
+            raise ValueError('姓名包含非法字符')
+        return v.strip()
+```
+
+---
+
+## 🛡️ 基础设施安全
+
+### 网络安全
+
+```hcl
+# Terraform 安全组配置
+resource "aws_security_group" "app" {
+  name        = "app-sg"
+  description = "Security group for application"
+  
+  # 只允许必要的端口
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/8"]  # 只允许内网
+  }
+  
+  # 拒绝所有入站（默认）
+  ingress {
+    from_port   = 0
+    to_port     = 65535
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    action      = "deny"
+  }
+  
+  # 限制出站
+  egress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+```
+
+### 密钥管理
+
+```python
+# ✅ 使用环境变量
+import os
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+SECRET_KEY = os.getenv("SECRET_KEY")
+
+# ✅ 使用密钥管理服务
+import boto3
+
+class SecretsManager:
+    def __init__(self):
+        self.client = boto3.client('secretsmanager')
+    
+    def get_secret(self, secret_name: str) -> dict:
+        response = self.client.get_secret_value(SecretId=secret_name)
+        return json.loads(response['SecretString'])
+    
+    def rotate_secret(self, secret_name: str):
+        self.client.rotate_secret(SecretId=secret_name)
+
+# 使用
+secrets = SecretsManager()
+db_credentials = secrets.get_secret("prod/db/credentials")
+```
+
+---
+
+## 🔍 安全扫描
+
+### 依赖扫描
+
+```bash
+# safety - Python 依赖扫描
+pip install safety
+safety check
+safety check --full-report
+
+# npm audit - Node.js 依赖扫描
+npm audit
+npm audit fix
+
+# Snyk - 综合扫描
+npm install -g snyk
+snyk auth
+snyk test
+snyk monitor
+```
+
+### 代码扫描
+
+```bash
+# bandit - Python 安全扫描
+pip install bandit
+bandit -r app/
+bandit -r app/ -f html -o bandit-report.html
+
+# ESLint security - JavaScript 安全扫描
+npm install eslint-plugin-security
+# .eslintrc.js
+plugins: ['security']
+extends: ['plugin:security/recommended']
+```
+
+### 容器扫描
+
+```bash
+# trivy - 容器漏洞扫描
+docker run -v /var/run/docker.sock:/var/run/docker.sock \
+  aquasec/trivy image myapp:latest
+
+# docker scan
+docker scan myapp:latest
+```
+
+---
+
+## 🚨 安全监控
+
+### 安全日志
+
+```python
+# 安全事件日志
+import logging
+
+security_logger = logging.getLogger('security')
+
+def log_security_event(event_type: str, user_id: str, details: dict):
+    security_logger.warning(
+        f"Security event: {event_type}",
+        extra={
+            'event_type': event_type,
+            'user_id': user_id,
+            'details': details,
+            'timestamp': datetime.utcnow().isoformat(),
+            'ip_address': get_client_ip()
+        }
+    )
+
+# 使用场景
+log_security_event('LOGIN_FAILED', user_id, {'email': email})
+log_security_event('UNAUTHORIZED_ACCESS', user_id, {'resource': resource})
+log_security_event('PASSWORD_CHANGED', user_id, {})
+```
+
+### 入侵检测
+
+```python
+# 异常登录检测
+class LoginAnomalyDetector:
+    def __init__(self, redis_client):
+        self.redis = redis_client
+    
+    def check_anomaly(self, user_id: str, ip_address: str, user_agent: str) -> bool:
+        # 检查地理位置异常
+        last_login = self.redis.get(f"user:{user_id}:last_login")
+        if last_login:
+            last_ip = self.redis.get(f"user:{user_id}:last_ip")
+            if self._is_different_location(last_ip, ip_address):
+                return True
+        
+        # 检查频率异常
+        login_count = self.redis.get(f"user:{user_id}:login_count:1h")
+        if login_count and int(login_count) > 10:
+            return True
+        
+        return False
+    
+    def record_login(self, user_id: str, ip_address: str):
+        self.redis.setex(f"user:{user_id}:last_login", 3600, datetime.utcnow().isoformat())
+        self.redis.setex(f"user:{user_id}:last_ip", 3600, ip_address)
+        self.redis.incr(f"user:{user_id}:login_count:1h")
+        self.redis.expire(f"user:{user_id}:login_count:1h", 3600)
+```
+
+---
+
+## 📋 安全检查清单
+
+### 应用安全
+
+- [ ] 输入验证完整
+- [ ] 输出编码正确
+- [ ] SQL 参数化查询
+- [ ] 密码加密存储
+- [ ] Token 安全管理
+- [ ] 会话管理安全
+- [ ] 错误信息不泄露
+- [ ] 日志记录完整
+
+### API 安全
+
+- [ ] 认证机制完善
+- [ ] 授权检查完整
+- [ ] 速率限制配置
+- [ ] 输入验证严格
+- [ ] 对象级授权检查
+- [ ] 批量操作限制
+- [ ] 文件上传限制
+- [ ] CORS 配置正确
+
+### 基础设施安全
+
+- [ ] 网络安全组配置
+- [ ] 密钥管理安全
+- [ ] 数据库加密
+- [ ] 备份恢复机制
+- [ ] 监控告警配置
+- [ ] 日志审计完整
+- [ ] 补丁管理及时
+- [ ] 访问控制严格
+
+### 开发流程安全
+
+- [ ] 代码审查包含安全检查
+- [ ] 依赖扫描自动化
+- [ ] 安全测试覆盖
+- [ ] 渗透测试定期
+- [ ] 安全培训定期
+- [ ] 事件响应流程
+- [ ] 漏洞管理流程
+- [ ] 合规检查定期
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[OWASP Top 10](https://owasp.org/www-project-top-ten/)** - OWASP 十大安全风险
+- **[OWASP API Security Top 10](https://owasp.org/www-project-api-security/)** - OWASP API 安全十大风险
+- **[CIS Benchmarks](https://www.cisecurity.org/cis-benchmarks/)** - CIS 安全基准
+- **[Google Security Best Practices](https://cloud.google.com/security/best-practices)** - Google 安全最佳实践
+
+### 学习资源
+
+- **[OWASP Cheat Sheets](https://cheatsheetseries.owasp.org/)** - OWASP 速查表
+- **[Security Engineering](https://www.cl.cam.ac.uk/~rja14/book.html)** - 安全工程
+- **[The Web Application Hacker's Handbook](https://www.oreilly.com/library/view/the-web-application/9781118026472/)** - Web 应用黑客手册
+
+### 工具
+
+- **[Bandit](https://bandit.readthedocs.io/)** - Python 安全扫描
+- **[Snyk](https://snyk.io/)** - 依赖漏洞扫描
+- **[Trivy](https://github.com/aquasecurity/trivy)** - 容器漏洞扫描
+- **[OWASP ZAP](https://www.zaproxy.org/)** - 安全测试工具
+- **[Burp Suite](https://portswigger.net/burp)** - 渗透测试工具
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，基于 OWASP/CIS/Google 安全最佳实践 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🟡 中（核心技能）

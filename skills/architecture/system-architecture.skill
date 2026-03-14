@@ -1,0 +1,746 @@
+# Skill: 系统架构设计
+
+> 基于 Google、Microsoft、AWS 最佳实践的系统架构设计技能
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🟡 中（核心技能）
+
+---
+
+## 📋 前置技能
+
+- ✅ [architecture-principles.skill](../architecture-principles.skill) - 架构设计原则
+- ✅ [backend-architecture.skill](../backend-architecture.skill) - 后端架构设计
+- ✅ [frontend-architecture.skill](../frontend-architecture.skill) - 前端架构设计
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[The System Design Primer](https://github.com/donnemartin/system-design-primer)** - 系统设计入门
+- **[AWS Well-Architected Framework](https://aws.amazon.com/architecture/well-architected/)** - AWS 架构框架
+- **[Google Cloud Architecture](https://cloud.google.com/architecture)** - Google 云架构
+- **[Microsoft Azure Architecture](https://docs.microsoft.com/en-us/azure/architecture/)** - Microsoft Azure 架构
+
+### 行业最佳实践
+
+- **Microservices Architecture** - 微服务架构
+- **Event-Driven Architecture** - 事件驱动架构
+- **Service Mesh** - 服务网格
+- **Domain-Driven Design (DDD)** - 领域驱动设计
+
+---
+
+## 🏛️ 微服务架构
+
+### 微服务设计原则
+
+```markdown
+### 单一职责
+- 每个服务只做一件事
+- 服务边界清晰
+- 业务领域明确
+
+### 独立部署
+- 服务可独立部署
+- 不依赖其他服务
+- 持续集成/持续部署
+
+### 去中心化治理
+- 技术栈选择自由
+- 数据库选择自由
+- 团队自治
+
+### 故障隔离
+- 服务故障不影响全局
+- 熔断器模式
+- 降级策略
+```
+
+### 微服务拆分策略
+
+```markdown
+### 按业务领域拆分
+- 用户服务
+- 订单服务
+- 产品服务
+- 支付服务
+
+### 按功能拆分
+- 认证服务
+- 通知服务
+- 搜索服务
+- 报表服务
+
+### 按数据拆分
+- 读服务
+- 写服务
+- 分析服务
+```
+
+### 微服务通信模式
+
+```python
+# 同步通信（HTTP/REST）
+class UserServiceClient:
+    def __init__(self, base_url: str):
+        self.base_url = base_url
+        self.session = requests.Session()
+    
+    def get_user(self, user_id: int) -> User:
+        response = self.session.get(f"{self.base_url}/users/{user_id}")
+        response.raise_for_status()
+        return User(**response.json())
+
+# 异步通信（消息队列）
+class EventPublisher:
+    def __init__(self, rabbitmq_url: str):
+        self.connection = pika.BlockingConnection(
+            pika.URLParameters(rabbitmq_url)
+        )
+        self.channel = self.connection.channel()
+    
+    def publish(self, event_type: str, data: dict):
+        self.channel.basic_publish(
+            exchange='events',
+            routing_key=event_type,
+            body=json.dumps(data)
+        )
+
+# gRPC 通信
+# user_service.proto
+service UserService {
+    rpc GetUser(GetUserRequest) returns (UserResponse);
+    rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+}
+
+# Python 客户端
+class UserServiceGrpcClient:
+    def __init__(self, channel):
+        self.stub = user_service_pb2_grpc.UserServiceStub(channel)
+    
+    def get_user(self, user_id: int) -> User:
+        request = user_service_pb2.GetUserRequest(id=user_id)
+        response = self.stub.GetUser(request)
+        return User.from_proto(response)
+```
+
+---
+
+## 🔗 API 网关模式
+
+### API 网关职责
+
+```markdown
+### 请求路由
+- 请求转发到对应服务
+- 负载均衡
+- 服务发现
+
+### 认证授权
+- Token 验证
+- 权限检查
+- 速率限制
+
+### 协议转换
+- REST to gRPC
+- HTTP to WebSocket
+- 数据格式转换
+
+### 监控日志
+- 请求日志
+- 性能指标
+- 错误追踪
+```
+
+### API 网关实现
+
+```python
+# Kong 配置
+services:
+  - name: user-service
+    url: http://user-service:8000
+    routes:
+      - paths: [/api/v1/users]
+        methods: [GET, POST, PUT, DELETE]
+  
+  - name: order-service
+    url: http://order-service:8000
+    routes:
+      - paths: [/api/v1/orders]
+        methods: [GET, POST, PUT, DELETE]
+
+plugins:
+  - name: jwt
+    config:
+      key_claim_name: sub
+      secret: ${JWT_SECRET}
+  
+  - name: rate-limiting
+    config:
+      minute: 100
+      policy: local
+  
+  - name: cors
+    config:
+      origins: [https://example.com]
+```
+
+### BFF 模式 (Backend for Frontend)
+
+```python
+# BFF for Web
+class WebBFF:
+    def __init__(self):
+        self.user_service = UserServiceClient()
+        self.order_service = OrderServiceClient()
+        self.product_service = ProductServiceClient()
+    
+    async def get_user_dashboard(self, user_id: int) -> dict:
+        # 聚合多个服务数据
+        user, orders, products = await asyncio.gather(
+            self.user_service.get_user(user_id),
+            self.order_service.get_user_orders(user_id),
+            self.product_service.get_recommendations(user_id)
+        )
+        
+        return {
+            "user": user,
+            "recent_orders": orders[:5],
+            "recommended_products": products[:10]
+        }
+
+# BFF for Mobile
+class MobileBFF:
+    def __init__(self):
+        self.user_service = UserServiceClient()
+        self.order_service = OrderServiceClient()
+    
+    async def get_mobile_home(self, user_id: int) -> dict:
+        # 移动端简化数据
+        user, orders = await asyncio.gather(
+            self.user_service.get_user(user_id),
+            self.order_service.get_user_orders(user_id, limit=3)
+        )
+        
+        return {
+            "user": {"name": user.name, "avatar": user.avatar},
+            "recent_orders": orders
+        }
+```
+
+---
+
+## 📦 消息队列架构
+
+### 消息队列模式
+
+```markdown
+### 发布/订阅 (Pub/Sub)
+- 一对多通信
+- 事件驱动
+- 松耦合
+
+### 点对点 (Point-to-Point)
+- 一对一通信
+- 任务队列
+- 负载均衡
+
+### 请求/响应 (Request/Reply)
+- 同步通信
+- RPC 模式
+- 超时控制
+```
+
+### RabbitMQ 实现
+
+```python
+# 生产者
+class EventProducer:
+    def __init__(self, rabbitmq_url: str):
+        self.connection = pika.BlockingConnection(
+            pika.URLParameters(rabbitmq_url)
+        )
+        self.channel = self.connection.channel()
+        self.channel.exchange_declare(
+            exchange='events',
+            exchange_type='topic'
+        )
+    
+    def publish(self, event_type: str, data: dict):
+        self.channel.basic_publish(
+            exchange='events',
+            routing_key=event_type,
+            body=json.dumps(data),
+            properties=pika.BasicProperties(
+                delivery_mode=2,  # 持久化
+                content_type='application/json'
+            )
+        )
+
+# 消费者
+class EventConsumer:
+    def __init__(self, rabbitmq_url: str, queue_name: str):
+        self.connection = pika.BlockingConnection(
+            pika.URLParameters(rabbitmq_url)
+        )
+        self.channel = self.connection.channel()
+        self.channel.queue_declare(queue=queue_name, durable=True)
+    
+    def subscribe(self, callback):
+        def wrapped_callback(ch, method, properties, body):
+            try:
+                data = json.loads(body)
+                callback(data)
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+            except Exception as e:
+                logger.error(f"处理消息失败：{e}")
+                ch.basic_nack(delivery_tag=method.delivery_tag)
+        
+        self.channel.basic_consume(
+            queue=queue_name,
+            on_message_callback=wrapped_callback
+        )
+        self.channel.start_consuming()
+```
+
+### Kafka 实现
+
+```python
+# 生产者
+from kafka import KafkaProducer
+
+class KafkaEventProducer:
+    def __init__(self, bootstrap_servers: list):
+        self.producer = KafkaProducer(
+            bootstrap_servers=bootstrap_servers,
+            value_serializer=lambda v: json.dumps(v).encode('utf-8'),
+            key_serializer=lambda k: k.encode('utf-8')
+        )
+    
+    def send_event(self, topic: str, key: str, value: dict):
+        future = self.producer.send(topic, key=key, value=value)
+        record_metadata = future.get(timeout=10)
+        logger.info(f"事件发送成功：{record_metadata}")
+    
+    def close(self):
+        self.producer.flush()
+        self.producer.close()
+
+# 消费者
+from kafka import KafkaConsumer
+
+class KafkaEventConsumer:
+    def __init__(self, bootstrap_servers: list, topics: list, group_id: str):
+        self.consumer = KafkaConsumer(
+            *topics,
+            bootstrap_servers=bootstrap_servers,
+            group_id=group_id,
+            value_deserializer=lambda m: json.loads(m.decode('utf-8')),
+            auto_offset_reset='earliest',
+            enable_auto_commit=False
+        )
+    
+    def consume(self, callback):
+        for message in self.consumer:
+            try:
+                callback(message.value)
+                self.consumer.commit()
+            except Exception as e:
+                logger.error(f"处理消息失败：{e}")
+```
+
+---
+
+## 🔄 分布式系统模式
+
+### 服务发现
+
+```python
+# Consul 服务发现
+import consul
+
+class ServiceDiscovery:
+    def __init__(self, consul_host: str, consul_port: int):
+        self.consul = consul.Consul(host=consul_host, port=consul_port)
+    
+    def register_service(
+        self,
+        service_name: str,
+        service_id: str,
+        host: str,
+        port: int,
+        health_check_url: str
+    ):
+        self.consul.agent.service.register(
+            name=service_name,
+            service_id=service_id,
+            address=host,
+            port=port,
+            check=consul.Check.http(
+                url=health_check_url,
+                interval='10s',
+                timeout='5s'
+            )
+        )
+    
+    def discover_service(self, service_name: str) -> list:
+        _, services = self.consul.health.service(service_name, passing_only=True)
+        return [
+            {
+                'address': service['Service']['Address'],
+                'port': service['Service']['Port']
+            }
+            for service in services
+        ]
+```
+
+### 负载均衡
+
+```python
+# 客户端负载均衡
+import random
+
+class LoadBalancer:
+    def __init__(self, service_discovery: ServiceDiscovery):
+        self.sd = service_discovery
+        self.instances = {}
+    
+    def get_instance(self, service_name: str) -> dict:
+        instances = self.sd.discover_service(service_name)
+        if not instances:
+            raise Exception(f"服务 {service_name} 不可用")
+        
+        # 轮询
+        if service_name not in self.instances:
+            self.instances[service_name] = 0
+        
+        index = self.instances[service_name] % len(instances)
+        self.instances[service_name] += 1
+        
+        return instances[index]
+    
+    def get_instance_weighted(self, service_name: str) -> dict:
+        instances = self.sd.discover_service(service_name)
+        # 加权轮询
+        return random.choice(instances)
+```
+
+### 熔断器模式
+
+```python
+from enum import Enum
+from datetime import datetime, timedelta
+
+class CircuitState(Enum):
+    CLOSED = "closed"
+    OPEN = "open"
+    HALF_OPEN = "half_open"
+
+class CircuitBreaker:
+    def __init__(
+        self,
+        failure_threshold: int = 5,
+        recovery_timeout: int = 60,
+        half_open_max_calls: int = 3
+    ):
+        self.failure_threshold = failure_threshold
+        self.recovery_timeout = recovery_timeout
+        self.half_open_max_calls = half_open_max_calls
+        
+        self.state = CircuitState.CLOSED
+        self.failure_count = 0
+        self.last_failure_time = None
+        self.half_open_calls = 0
+    
+    def call(self, operation):
+        if self.state == CircuitState.OPEN:
+            if self._should_attempt_reset():
+                self.state = CircuitState.HALF_OPEN
+                self.half_open_calls = 0
+            else:
+                raise Exception("Circuit breaker is OPEN")
+        
+        try:
+            result = operation()
+            self._on_success()
+            return result
+        except Exception as e:
+            self._on_failure()
+            raise e
+    
+    def _on_success(self):
+        self.failure_count = 0
+        if self.state == CircuitState.HALF_OPEN:
+            self.half_open_calls += 1
+            if self.half_open_calls >= self.half_open_max_calls:
+                self.state = CircuitState.CLOSED
+    
+    def _on_failure(self):
+        self.failure_count += 1
+        self.last_failure_time = datetime.utcnow()
+        
+        if self.failure_count >= self.failure_threshold:
+            self.state = CircuitState.OPEN
+    
+    def _should_attempt_reset(self):
+        if self.last_failure_time is None:
+            return True
+        
+        return datetime.utcnow() - self.last_failure_time > timedelta(seconds=self.recovery_timeout)
+```
+
+---
+
+## 📊 可观测性架构
+
+### 日志管理
+
+```python
+# 结构化日志
+import logging
+import json
+
+class JSONFormatter(logging.Formatter):
+    def format(self, record):
+        log_entry = {
+            'timestamp': datetime.utcnow().isoformat(),
+            'level': record.levelname,
+            'logger': record.name,
+            'message': record.getMessage(),
+            'module': record.module,
+            'function': record.funcName,
+            'line': record.lineno
+        }
+        
+        if record.exc_info:
+            log_entry['exception'] = self.formatException(record.exc_info)
+        
+        return json.dumps(log_entry)
+
+# 配置
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+handler.setFormatter(JSONFormatter())
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
+
+# 使用
+logger.info("用户登录", extra={
+    'user_id': user_id,
+    'ip_address': request.client.host
+})
+```
+
+### 指标监控
+
+```python
+# Prometheus 指标
+from prometheus_client import Counter, Histogram, Gauge, start_http_server
+
+# 计数器
+request_counter = Counter(
+    'http_requests_total',
+    'Total HTTP requests',
+    ['method', 'endpoint', 'status']
+)
+
+# 直方图
+request_duration = Histogram(
+    'http_request_duration_seconds',
+    'HTTP request duration in seconds',
+    ['method', 'endpoint']
+)
+
+# 仪表盘
+active_users = Gauge(
+    'active_users',
+    'Number of active users'
+)
+
+# 使用
+@request_duration.labels(method='GET', endpoint='/users').time():
+    users = get_users()
+    request_counter.labels(method='GET', endpoint='/users', status=200).inc()
+```
+
+### 链路追踪
+
+```python
+# OpenTelemetry 追踪
+from opentelemetry import trace
+from opentelemetry.exporter.jaeger.thrift import JaegerExporter
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+# 配置追踪
+trace.set_tracer_provider(TracerProvider())
+jaeger_exporter = JaegerExporter(
+    agent_host_name="localhost",
+    agent_port=6831,
+)
+trace.get_tracer_provider().add_span_processor(
+    BatchSpanProcessor(jaeger_exporter)
+)
+
+tracer = trace.get_tracer(__name__)
+
+# 使用
+with tracer.start_as_current_span("get_user") as span:
+    span.set_attribute("user.id", user_id)
+    user = get_user(user_id)
+    span.set_attribute("user.found", user is not None)
+```
+
+---
+
+## 🔒 安全架构
+
+### 认证架构
+
+```python
+# OAuth 2.0 / OIDC
+from authlib.integrations.starlette_client import OAuth
+
+oauth = OAuth()
+
+oauth.register(
+    name='google',
+    client_id=settings.GOOGLE_CLIENT_ID,
+    client_secret=settings.GOOGLE_CLIENT_SECRET,
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+    client_kwargs={
+        'scope': 'openid email profile'
+    }
+)
+
+# 登录
+@router.get('/login/google')
+async def login_google(request: Request):
+    redirect_uri = request.url_for('auth_google_callback')
+    return await oauth.google.authorize_redirect(request, redirect_uri)
+
+# 回调
+@router.get('/login/google/callback')
+async def auth_google_callback(request: Request):
+    token = await oauth.google.authorize_access_token(request)
+    user_info = token['userinfo']
+    # 创建或更新用户
+    return {'user': user_info}
+```
+
+### 授权架构
+
+```python
+# RBAC (Role-Based Access Control)
+class RBACMiddleware:
+    def __init__(self, app):
+        self.app = app
+        self.role_permissions = {
+            'admin': ['*'],
+            'manager': ['users:read', 'orders:*'],
+            'user': ['users:read:self', 'orders:create']
+        }
+    
+    async def __call__(self, scope, receive, send):
+        if scope['type'] == 'http':
+            request = Request(scope, receive)
+            user = request.state.user
+            
+            if not self._has_permission(user, request):
+                return JSONResponse(
+                    status_code=403,
+                    content={'error': '权限不足'}
+                )
+        
+        await self.app(scope, receive, send)
+    
+    def _has_permission(self, user, request) -> bool:
+        user_role = user.role
+        required_permission = f"{request.url.path}:{request.method}"
+        
+        permissions = self.role_permissions.get(user_role, [])
+        
+        if '*' in permissions:
+            return True
+        
+        return required_permission in permissions
+```
+
+---
+
+## 📋 架构检查清单
+
+### 微服务架构
+
+- [ ] 服务边界清晰
+- [ ] 独立部署能力
+- [ ] 服务发现配置
+- [ ] 负载均衡配置
+- [ ] 熔断器配置
+
+### 消息队列
+
+- [ ] 消息持久化
+- [ ] 消息确认机制
+- [ ] 死信队列
+- [ ] 消息重试
+- [ ] 幂等性处理
+
+### 可观测性
+
+- [ ] 结构化日志
+- [ ] 指标监控
+- [ ] 链路追踪
+- [ ] 告警配置
+- [ ] 仪表盘
+
+### 安全性
+
+- [ ] 认证机制
+- [ ] 授权检查
+- [ ] 数据加密
+- [ ] 速率限制
+- [ ] 安全审计
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[The System Design Primer](https://github.com/donnemartin/system-design-primer)** - 系统设计入门
+- **[AWS Well-Architected Framework](https://aws.amazon.com/architecture/well-architected/)** - AWS 架构框架
+- **[Google Cloud Architecture](https://cloud.google.com/architecture)** - Google 云架构
+- **[Microsoft Azure Architecture](https://docs.microsoft.com/en-us/azure/architecture/)** - Microsoft Azure 架构
+
+### 学习资源
+
+- **[Microservices Patterns](https://microservices.io/patterns/)** - 微服务模式
+- **[Designing Data-Intensive Applications](https://dataintensive.net/)** - 数据密集型应用设计
+- **[Building Microservices](https://www.oreilly.com/library/view/building-microservices/9781491950340/)** - 构建微服务
+
+### 工具
+
+- **[Kong](https://konghq.com/)** - API 网关
+- **[RabbitMQ](https://www.rabbitmq.com/)** - 消息队列
+- **[Kafka](https://kafka.apache.org/)** - 分布式流平台
+- **[Prometheus](https://prometheus.io/)** - 监控指标
+- **[Jaeger](https://www.jaegertracing.io/)** - 链路追踪
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，基于 Google/Microsoft/AWS 最佳实践 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🟡 中（核心技能）

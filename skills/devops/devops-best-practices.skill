@@ -1,0 +1,732 @@
+# Skill: DevOps 最佳实践
+
+> 基于 Google SRE、Microsoft DevOps 最佳实践的 DevOps 技能
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🟡 中（核心技能）
+
+---
+
+## 📋 前置技能
+
+- ✅ [architecture-principles.skill](../architecture-principles.skill) - 架构设计原则
+- ✅ [system-architecture.skill](../system-architecture.skill) - 系统架构设计
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[Google SRE Book](https://sre.google/books/)** - Google SRE 书籍
+- **[The DevOps Handbook](https://www.oreilly.com/library/view/the-devops-handbook/9781457191381/)** - DevOps 手册
+- **[Accelerate](https://www.oreilly.com/library/view/accelerate/9781484203033/)** - 加速：精益软件与 DevOps 的科学
+- **[Microsoft DevOps](https://docs.microsoft.com/en-us/devops/)** - Microsoft DevOps
+
+### 行业最佳实践
+
+- **Continuous Integration (CI)** - 持续集成
+- **Continuous Delivery (CD)** - 持续交付
+- **Infrastructure as Code (IaC)** - 基础设施即代码
+- **Monitoring & Observability** - 监控与可观测性
+- **Incident Management** - 事件管理
+
+---
+
+## 🔄 持续集成 (CI)
+
+### CI 流程
+
+```markdown
+### 代码提交
+1. 开发者提交代码
+2. 触发 CI 流水线
+3. 代码质量检查
+
+### 构建阶段
+1. 依赖安装
+2. 代码编译
+3. 单元测试
+4. 代码覆盖率
+
+### 验证阶段
+1. 集成测试
+2. E2E 测试
+3. 安全扫描
+4. 性能测试
+
+### 制品管理
+1. 构建 Docker 镜像
+2. 推送到镜像仓库
+3. 生成版本标签
+```
+
+### GitHub Actions 配置
+
+```yaml
+# .github/workflows/ci.yml
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.11
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pylint black flake8 mypy
+      
+      - name: Run linters
+        run: |
+          black --check app/
+          flake8 app/
+          pylint app/
+          mypy app/
+  
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.11
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql://postgres:test@localhost:5432/test
+        run: |
+          pytest tests/ --cov=app --cov-report=xml
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v2
+        with:
+          file: ./coverage.xml
+  
+  build:
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          tags: |
+            myapp:${{ github.sha }}
+            myapp:latest
+```
+
+---
+
+## 🚀 持续交付 (CD)
+
+### CD 流程
+
+```markdown
+### 部署准备
+1. 环境配置
+2. 数据库迁移
+3. 密钥管理
+4. 配置文件
+
+### 部署策略
+1. 蓝绿部署
+2. 金丝雀发布
+3. 滚动更新
+4. 影子部署
+
+### 验证阶段
+1. 健康检查
+2. 冒烟测试
+3. 性能验证
+4. 业务验证
+
+### 回滚策略
+1. 自动回滚
+2. 手动回滚
+3. 数据回滚
+4. 配置回滚
+```
+
+### Kubernetes 部署
+
+```yaml
+# k8s/deployment.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+  labels:
+    app: myapp
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: myapp
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+        - name: myapp
+          image: myapp:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: url
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-service
+spec:
+  selector:
+    app: myapp
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+  type: LoadBalancer
+```
+
+### GitHub Actions CD
+
+```yaml
+# .github/workflows/cd.yml
+name: CD Pipeline
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v1
+        with:
+          version: 'v1.21.0'
+      
+      - name: Configure kubectl
+        run: |
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > kubeconfig
+          export KUBECONFIG=kubeconfig
+      
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl apply -f k8s/
+          kubectl set image deployment/myapp myapp=myapp:${{ github.ref_name }}
+      
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/myapp
+      
+      - name: Run smoke tests
+        run: |
+          pytest tests/smoke/
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          rm kubeconfig
+```
+
+---
+
+## 🏗️ 基础设施即代码 (IaC)
+
+### Terraform 配置
+
+```hcl
+# main.tf
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 4.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = "us-west-2"
+}
+
+# VPC
+resource "aws_vpc" "main" {
+  cidr_block = "10.0.0.0/16"
+  
+  tags = {
+    Name = "myapp-vpc"
+  }
+}
+
+# Subnets
+resource "aws_subnet" "public" {
+  count             = 2
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.${count.index + 1}.0/24"
+  availability_zone = data.aws_availability_zones.available.names[count.index]
+  
+  tags = {
+    Name = "public-subnet-${count.index + 1}"
+  }
+}
+
+# Security Group
+resource "aws_security_group" "app" {
+  name        = "app-sg"
+  description = "Security group for application"
+  vpc_id      = aws_vpc.main.id
+  
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# EKS Cluster
+resource "aws_eks_cluster" "main" {
+  name     = "myapp-cluster"
+  role_arn = aws_iam_role.eks_cluster.arn
+  
+  vpc_config {
+    subnet_ids = aws_subnet.public[*].id
+  }
+}
+
+# RDS Database
+resource "aws_db_instance" "main" {
+  identifier           = "myapp-db"
+  engine               = "postgres"
+  engine_version       = "15"
+  instance_class       = "db.t3.medium"
+  allocated_storage    = 100
+  storage_encrypted    = true
+  publicly_accessible  = false
+  
+  db_name  = "myapp"
+  username = var.db_username
+  password = var.db_password
+  
+  vpc_security_group_ids = [aws_security_group.db.id]
+  db_subnet_group_name   = aws_db_subnet_group.main.name
+  
+  backup_retention_period = 7
+  backup_window          = "03:00-04:00"
+}
+```
+
+### Ansible 配置
+
+```yaml
+# playbook.yml
+---
+- name: Deploy Application
+  hosts: app_servers
+  become: yes
+  vars:
+    app_name: myapp
+    app_port: 8000
+  
+  tasks:
+    - name: Install Docker
+      apt:
+        name: docker.io
+        state: present
+        update_cache: yes
+    
+    - name: Start Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
+    
+    - name: Pull Docker image
+      docker_image:
+        name: myapp:latest
+        source: pull
+    
+    - name: Run Docker container
+      docker_container:
+        name: "{{ app_name }}"
+        image: "myapp:latest"
+        ports:
+          - "{{ app_port }}:{{ app_port }}"
+        env:
+          DATABASE_URL: "{{ db_url }}"
+        restart_policy: always
+        state: started
+    
+    - name: Wait for application to be ready
+      uri:
+        url: "http://localhost:{{ app_port }}/health"
+        status_code: 200
+      register: health_check
+      retries: 10
+      delay: 5
+      until: health_check.status == 200
+```
+
+---
+
+## 📊 监控与告警
+
+### Prometheus 配置
+
+```yaml
+# prometheus.yml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+  
+  - job_name: 'app'
+    static_configs:
+      - targets: ['app:8000']
+    metrics_path: '/metrics'
+  
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+rule_files:
+  - "alerts.yml"
+```
+
+### 告警规则
+
+```yaml
+# alerts.yml
+groups:
+  - name: application
+    rules:
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "高错误率"
+          description: "错误率超过 10%"
+      
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "高延迟"
+          description: "P95 延迟超过 1 秒"
+      
+      - alert: InstanceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "实例宕机"
+          description: "{{ $labels.instance }} 已宕机"
+```
+
+### Grafana 仪表盘
+
+```json
+{
+  "dashboard": {
+    "title": "Application Dashboard",
+    "panels": [
+      {
+        "title": "Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total[5m])",
+            "legendFormat": "{{method}} {{endpoint}}"
+          }
+        ]
+      },
+      {
+        "title": "Error Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{status=~\"5..\"}[5m])",
+            "legendFormat": "5xx errors"
+          }
+        ]
+      },
+      {
+        "title": "Latency (P95)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "P95 latency"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+---
+
+## 🔥 事件管理
+
+### 事件响应流程
+
+```markdown
+### 事件检测
+1. 监控告警触发
+2. 用户报告
+3. 自动化检测
+
+### 事件分类
+- P0: 严重（服务完全不可用）
+- P1: 高（核心功能受影响）
+- P2: 中（部分功能受影响）
+- P3: 低（轻微影响）
+
+### 事件响应
+1. 确认事件
+2. 评估影响
+3. 通知相关人员
+4. 启动应急响应
+
+### 事件解决
+1. 临时修复
+2. 永久修复
+3. 验证修复
+4. 关闭事件
+
+### 事后复盘
+1. 事件时间线
+2. 根因分析
+3. 改进措施
+4. 经验总结
+```
+
+### 事件响应模板
+
+```markdown
+# 事件报告
+
+## 基本信息
+- 事件 ID: INC-2026-0314-001
+- 严重级别: P1
+- 状态: 已解决
+- 持续时间: 2 小时 30 分钟
+
+## 影响
+- 受影响服务：用户服务、订单服务
+- 受影响用户：约 10,000 用户
+- 业务影响：无法登录、无法下单
+
+## 时间线
+- 10:00 - 监控告警触发
+- 10:05 - 工程师确认事件
+- 10:15 - 启动应急响应
+- 10:30 - 定位根因（数据库连接池耗尽）
+- 11:00 - 临时修复（增加连接池大小）
+- 11:30 - 服务恢复
+- 12:30 - 事件关闭
+
+## 根因分析
+数据库连接池配置过小，无法应对流量高峰。
+
+## 改进措施
+- [ ] 优化连接池配置（负责人：张三，截止日期：2026-03-21）
+- [ ] 添加连接池监控告警（负责人：李四，截止日期：2026-03-21）
+- [ ] 压力测试验证（负责人：王五，截止日期：2026-03-28）
+```
+
+---
+
+## 📋 DevOps 检查清单
+
+### 持续集成
+
+- [ ] 代码提交自动触发
+- [ ] 自动化测试覆盖
+- [ ] 代码质量检查
+- [ ] 安全扫描
+- [ ] 构建制品管理
+
+### 持续交付
+
+- [ ] 自动化部署
+- [ ] 部署策略配置
+- [ ] 健康检查
+- [ ] 回滚机制
+- [ ] 环境一致性
+
+### 基础设施
+
+- [ ] IaC 配置
+- [ ] 版本控制
+- [ ] 自动化配置
+- [ ] 密钥管理
+- [ ] 合规检查
+
+### 监控告警
+
+- [ ] 指标收集
+- [ ] 日志聚合
+- [ ] 链路追踪
+- [ ] 告警配置
+- [ ] 仪表盘
+
+### 事件管理
+
+- [ ] 事件响应流程
+- [ ] 事件分类
+- [ ] 升级机制
+- [ ] 事后复盘
+- [ ] 改进跟踪
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[Google SRE Book](https://sre.google/books/)** - Google SRE 书籍
+- **[The DevOps Handbook](https://www.oreilly.com/library/view/the-devops-handbook/9781457191381/)** - DevOps 手册
+- **[Accelerate](https://www.oreilly.com/library/view/accelerate/9781484203033/)** - 加速：精益软件与 DevOps 的科学
+- **[Microsoft DevOps](https://docs.microsoft.com/en-us/devops/)** - Microsoft DevOps
+
+### 学习资源
+
+- **[DevOps Roadmap](https://roadmap.sh/devops)** - DevOps 学习路线
+- **[Kubernetes Documentation](https://kubernetes.io/docs/)** - Kubernetes 文档
+- **[Terraform Documentation](https://www.terraform.io/docs/)** - Terraform 文档
+
+### 工具
+
+- **[GitHub Actions](https://github.com/features/actions)** - CI/CD
+- **[Kubernetes](https://kubernetes.io/)** - 容器编排
+- **[Terraform](https://www.terraform.io/)** - 基础设施即代码
+- **[Prometheus](https://prometheus.io/)** - 监控指标
+- **[Grafana](https://grafana.com/)** - 可视化仪表盘
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，基于 Google SRE/Microsoft DevOps 最佳实践 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🟡 中（核心技能）

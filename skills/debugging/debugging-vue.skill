@@ -1,0 +1,814 @@
+# Skill: Vue 调试
+
+> 基于 Google、Microsoft 最佳实践的 Vue 3 调试技能
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🟡 中（核心技能）
+
+---
+
+## 📋 前置技能
+
+- ✅ [debugging.skill](../debugging.skill) - 通用调试
+- ✅ [testing-vue.skill](../testing/testing-vue.skill) - Vue 测试
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[Vue.js Debugging Guide](https://vuejs.org/guide/scaling-up/debugging.html)** - Vue 官方调试指南
+- **[Google TypeScript Debugging](https://google.github.io/eng-practices/)** - Google TypeScript 调试指南
+- **[Microsoft Vue Debugging](https://code.visualstudio.com/docs/nodejs/vuejs-tutorial)** - Microsoft Vue 调试指南
+
+### 工具栈
+
+- **Vue DevTools** - Vue 开发者工具
+- **Chrome DevTools** - 浏览器调试工具
+- **Vite DevTools** - Vite 开发工具
+- **Pinia DevTools** - Pinia 状态调试
+- **Playwright** - E2E 调试
+
+---
+
+## 🔧 Vue 调试工具
+
+### Vue DevTools
+
+**安装**:
+```bash
+# Chrome 扩展
+https://chrome.google.com/webstore/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd
+
+# Firefox 扩展
+https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/
+
+# 独立应用
+npm install -g @vue/devtools
+```
+
+**核心功能**:
+```markdown
+### 组件树
+- 查看组件层级
+- 检查 Props 和 Emits
+- 查看组件状态
+- 追踪组件事件
+
+### 状态管理
+- Pinia/Vuex 状态检查
+- State 修改追踪
+- Actions 调用追踪
+- Getters 计算追踪
+
+### 路由
+- 查看路由信息
+- 路由历史记录
+- 路由参数检查
+
+### 性能
+- 组件渲染时间
+- 性能分析
+- 内存使用
+```
+
+**使用技巧**:
+```markdown
+### 组件检查
+1. 打开 DevTools → Components 标签
+2. 选择要检查的组件
+3. 查看 Props、State、Events
+4. 实时修改数据测试
+
+### 状态调试
+1. 打开 DevTools → Pinia 标签
+2. 选择 Store
+3. 查看 State、Getters、Actions
+4. 直接修改 State 测试
+
+### 事件追踪
+1. 打开 DevTools → Timeline 标签
+2. 启用事件记录
+3. 触发组件事件
+4. 查看事件流
+```
+
+---
+
+### Chrome DevTools
+
+**Sources 调试**:
+```javascript
+// 1. 设置断点
+// 在代码行号点击设置断点
+
+// 2. 条件断点
+// 右键行号 → Add conditional breakpoint
+// 输入条件：count > 10
+
+// 3. 日志断点
+// 右键行号 → Add logpoint
+// 输入：Component rendered with count {count}
+```
+
+**Console 调试**:
+```javascript
+// 基础日志
+console.log('普通日志', data)
+console.info('信息日志', info)
+console.warn('警告日志', warning)
+console.error('错误日志', error)
+
+// 分组日志
+console.group('用户操作')
+console.log('登录开始')
+console.log('验证通过')
+console.log('登录成功')
+console.groupEnd()
+
+// 表格日志
+console.table(users)
+
+// 时间日志
+console.time('处理时间')
+processData()
+console.timeEnd('处理时间')
+
+// 断言
+console.assert(count > 0, 'Count 必须大于 0')
+```
+
+**Network 调试**:
+```markdown
+### 请求检查
+- 查看请求头
+- 查看请求体
+- 查看响应数据
+- 查看状态码
+
+### 性能分析
+- 查看加载时间
+- 查看 Waterfall
+- 查看缓存命中
+- 查看慢请求
+
+### 过滤和搜索
+- 按类型过滤（XHR, Fetch, JS, CSS）
+- 按状态码过滤
+- 搜索请求
+```
+
+---
+
+## 🎨 组件调试
+
+### Props 调试
+
+**验证 Props**:
+```vue
+<script setup lang="ts">
+import { watch } from 'vue'
+
+interface Props {
+  userId: number
+  userName: string
+  isActive?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  isActive: false
+})
+
+// 调试 Props 变化
+watch(
+  () => props.userId,
+  (newVal, oldVal) => {
+    console.log('userId 变化:', { oldVal, newVal })
+  }
+)
+
+watch(
+  () => props,
+  (newProps) => {
+    console.log('所有 Props 变化:', newProps)
+  },
+  { deep: true }
+)
+</script>
+```
+
+**Props 验证错误排查**:
+```vue
+<script setup lang="ts">
+// ❌ 错误：Props 类型不匹配
+const props = defineProps<{
+  count: number
+}>()
+
+// 使用时传入字符串
+// <UserCard count="10" />
+
+// ✅ 正确：添加运行时验证
+const props = defineProps<{
+  count: number
+}>()
+
+// 添加验证器
+const props = defineProps<{
+  status: 'success' | 'error' | 'warning'
+  validator: (value: string) => {
+    return ['success', 'error', 'warning'].includes(value)
+  }
+}>()
+</script>
+```
+
+---
+
+### Events 调试
+
+**事件追踪**:
+```vue
+<script setup lang="ts">
+const emit = defineEmits<{
+  (e: 'update', value: string): void
+  (e: 'delete', id: number): void
+  (e: 'error', error: Error): void
+}>()
+
+// 包装 emit 函数用于调试
+const debugEmit = ((event, ...args) => {
+  console.log('事件触发:', {
+    event,
+    args,
+    timestamp: new Date().toISOString()
+  })
+  emit(event as any, ...args)
+}) as typeof emit
+
+// 使用 debugEmit 替代 emit
+const handleDelete = () => {
+  debugEmit('delete', props.id)
+}
+</script>
+```
+
+**事件未触发排查**:
+```vue
+<script setup lang="ts">
+// 检查清单:
+// 1. 事件是否在 emits 中定义
+// 2. 事件名是否正确
+// 3. 父组件是否正确监听
+// 4. 事件是否被阻止
+
+// 调试步骤:
+const emit = defineEmits<{
+  (e: 'update', value: string): void
+}>()
+
+const handleClick = () => {
+  console.log('点击事件触发')
+  emit('update', 'test')
+  console.log('emit 调用完成')
+}
+</script>
+
+<template>
+  <button @click="handleClick">点击</button>
+</template>
+```
+
+---
+
+### 响应式数据调试
+
+**ref/reactive 调试**:
+```vue
+<script setup lang="ts">
+import { ref, reactive, watch, watchEffect } from 'vue'
+
+const count = ref(0)
+const state = reactive({
+  name: 'test',
+  age: 18
+})
+
+// 监听 ref 变化
+watch(count, (newVal, oldVal) => {
+  console.log('count 变化:', { oldVal, newVal })
+})
+
+// 监听 reactive 变化
+watch(
+  () => ({ ...state }),
+  (newState) => {
+    console.log('state 变化:', newState)
+  },
+  { deep: true }
+)
+
+// 监听多个值
+watch([count, () => state.age], ([newCount, newAge]) => {
+  console.log('多个值变化:', { newCount, newAge })
+})
+
+// 自动追踪依赖
+watchEffect(() => {
+  console.log('count 当前值:', count.value)
+  console.log('state 当前值:', state)
+})
+</script>
+```
+
+**响应式丢失排查**:
+```vue
+<script setup lang="ts">
+import { ref, reactive, toRefs } from 'vue'
+
+// ❌ 错误：解构失去响应性
+const state = reactive({ count: 0 })
+const { count } = state  // 失去响应性
+
+// ✅ 正确：使用 toRefs
+const state = reactive({ count: 0 })
+const { count } = toRefs(state)  // 保持响应性
+
+// ❌ 错误：直接赋值
+const countRef = ref(0)
+countRef = 1  // 错误
+
+// ✅ 正确：使用 .value
+const countRef = ref(0)
+countRef.value = 1  // 正确
+</script>
+```
+
+---
+
+## 📦 Pinia 调试
+
+### Store 状态调试
+
+**状态检查**:
+```typescript
+// stores/user.ts
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+
+export const useUserStore = defineStore('user', () => {
+  // State
+  const currentUser = ref<User | null>(null)
+  const users = ref<User[]>([])
+
+  // Getters
+  const isLoggedIn = computed(() => !!currentUser.value)
+  const activeUsers = computed(() => users.value.filter(u => u.isActive))
+
+  // Actions
+  const fetchUser = async (id: number) => {
+    console.log('fetchUser 调用:', { id })
+    try {
+      const response = await api.getUser(id)
+      currentUser.value = response.data
+      console.log('fetchUser 成功:', currentUser.value)
+    } catch (error) {
+      console.error('fetchUser 失败:', error)
+      throw error
+    }
+  }
+
+  const deleteUser = async (id: number) => {
+    console.log('deleteUser 调用:', { id })
+    await api.deleteUser(id)
+    users.value = users.value.filter(u => u.id !== id)
+    console.log('deleteUser 完成')
+  }
+
+  return {
+    currentUser,
+    users,
+    isLoggedIn,
+    activeUsers,
+    fetchUser,
+    deleteUser
+  }
+})
+```
+
+**调试 DevTools**:
+```typescript
+// 启用 Pinia DevTools 插件
+import { createPinia } from 'pinia'
+import { createLogger } from 'pinia'
+
+const pinia = createPinia()
+
+// 开发环境启用日志
+if (import.meta.env.DEV) {
+  pinia.use(createLogger({
+    logger: console.log,
+    expandActionLog: true
+  }))
+}
+```
+
+---
+
+### Actions 调试
+
+**Action 调用追踪**:
+```typescript
+// stores/user.ts
+export const useUserStore = defineStore('user', () => {
+  const fetchUser = async (id: number) => {
+    const actionId = `fetchUser_${id}_${Date.now()}`
+    
+    console.group(`Action: ${actionId}`)
+    console.log('开始执行 fetchUser', { id })
+    
+    try {
+      const startTime = Date.now()
+      const response = await api.getUser(id)
+      const endTime = Date.now()
+      
+      console.log('API 调用完成:', {
+        duration: endTime - startTime,
+        data: response.data
+      })
+      
+      currentUser.value = response.data
+      console.log('State 更新完成')
+      
+      console.groupEnd()
+      return response.data
+    } catch (error) {
+      console.error('Action 失败:', error)
+      console.groupEnd()
+      throw error
+    }
+  }
+
+  return { fetchUser }
+})
+```
+
+---
+
+## 🌐 网络请求调试
+
+### Axios 拦截器
+
+**请求拦截器**:
+```typescript
+// api/client.ts
+import axios from 'axios'
+
+const apiClient = axios.create({
+  baseURL: '/api/v1',
+  timeout: 30000
+})
+
+// 请求拦截器
+apiClient.interceptors.request.use(
+  config => {
+    console.log('请求发送:', {
+      url: config.url,
+      method: config.method,
+      data: config.data,
+      headers: config.headers
+    })
+    
+    // 添加 Token
+    const token = localStorage.getItem('access_token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    
+    return config
+  },
+  error => {
+    console.error('请求错误:', error)
+    return Promise.reject(error)
+  }
+)
+```
+
+**响应拦截器**:
+```typescript
+// 响应拦截器
+apiClient.interceptors.response.use(
+  response => {
+    console.log('响应接收:', {
+      url: response.config.url,
+      status: response.status,
+      data: response.data
+    })
+    return response
+  },
+  error => {
+    console.error('响应错误:', {
+      url: error.config?.url,
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    })
+    
+    // 处理特定错误
+    if (error.response?.status === 401) {
+      console.warn('Token 过期，跳转登录')
+      // 跳转登录逻辑
+    }
+    
+    return Promise.reject(error)
+  }
+)
+```
+
+---
+
+### 错误处理调试
+
+**全局错误处理**:
+```vue
+<script setup lang="ts">
+import { useSnackbar } from '@/composables/useSnackbar'
+
+const { showError } = useSnackbar()
+
+const handleError = (error: unknown) => {
+  console.error('错误详情:', {
+    message: error instanceof Error ? error.message : error,
+    stack: error instanceof Error ? error.stack : undefined,
+    timestamp: new Date().toISOString()
+  })
+  
+  // 显示用户友好的错误消息
+  if (error instanceof Error) {
+    showError(error.message)
+  } else {
+    showError('发生未知错误')
+  }
+}
+
+const fetchData = async () => {
+  try {
+    const response = await apiClient.get('/data')
+    return response.data
+  } catch (error) {
+    handleError(error)
+    throw error
+  }
+}
+</script>
+```
+
+---
+
+## 🐛 常见错误排查
+
+### 组件未渲染
+
+**排查步骤**:
+```markdown
+1. 检查组件是否注册
+   - 全局注册或局部注册
+   - 组件名是否正确
+
+2. 检查 v-if 条件
+   - 条件是否为 true
+   - 数据是否正确
+
+3. 检查路由配置
+   - 路由路径是否正确
+   - 组件是否正确导入
+
+4. 检查控制台错误
+   - 查看错误消息
+   - 查看堆栈跟踪
+```
+
+**示例**:
+```vue
+<!-- ❌ 错误：组件未注册 -->
+<template>
+  <UserCard /> <!-- UserCard 未注册 -->
+</template>
+
+<!-- ✅ 正确：注册组件 -->
+<script setup lang="ts">
+import UserCard from '@/components/UserCard.vue'
+</script>
+```
+
+---
+
+### 数据未更新
+
+**排查步骤**:
+```markdown
+1. 检查响应式声明
+   - 是否使用 ref/reactive
+   - 是否正确访问 .value
+
+2. 检查 Props 传递
+   - Props 是否正确传递
+   - Props 是否被直接修改
+
+3. 检查计算属性
+   - 依赖是否正确
+   - 是否有缓存问题
+
+4. 检查异步更新
+   - 使用 nextTick
+   - 使用 watch
+```
+
+**示例**:
+```vue
+<script setup lang="ts">
+import { ref, nextTick } from 'vue'
+
+const count = ref(0)
+
+// ❌ 错误：直接修改
+const increment = () => {
+  count = count + 1  // 错误
+}
+
+// ✅ 正确：使用 .value
+const increment = () => {
+  count.value++
+}
+
+// 异步更新后操作
+const updateAndLog = async () => {
+  count.value++
+  await nextTick()
+  console.log('更新后的值:', count.value)
+}
+</script>
+```
+
+---
+
+### 内存泄漏
+
+**常见原因**:
+```markdown
+1. 未清理的定时器
+2. 未移除的事件监听器
+3. 未取消的订阅
+4. 未清理的 DOM 引用
+```
+
+**排查和修复**:
+```vue
+<script setup lang="ts">
+import { onMounted, onUnmounted, ref } from 'vue'
+
+const timer = ref<number | null>(null)
+const subscription = ref<Subscription | null>(null)
+
+onMounted(() => {
+  // 设置定时器
+  timer.value = window.setInterval(() => {
+    console.log('tick')
+  }, 1000)
+  
+  // 订阅事件
+  subscription.value = eventBus.subscribe('event', handleEvent)
+})
+
+onUnmounted(() => {
+  // 清理定时器
+  if (timer.value) {
+    clearInterval(timer.value)
+  }
+  
+  // 取消订阅
+  if (subscription.value) {
+    subscription.value.unsubscribe()
+  }
+})
+</script>
+```
+
+---
+
+## 📋 调试检查清单
+
+### 组件调试
+
+- [ ] Props 传递正确
+- [ ] Emits 触发正确
+- [ ] 响应式数据正确
+- [ ] 计算属性正确
+- [ ] 生命周期正确
+
+### Pinia 调试
+
+- [ ] State 定义正确
+- [ ] Getters 计算正确
+- [ ] Actions 调用正确
+- [ ] 状态更新正确
+- [ ] DevTools 正常
+
+### 网络调试
+
+- [ ] 请求拦截器配置
+- [ ] 响应拦截器配置
+- [ ] 错误处理完善
+- [ ] Token 管理正确
+- [ ] 超时配置合理
+
+### 性能调试
+
+- [ ] 组件渲染性能
+- [ ] 列表渲染优化
+- [ ] 图片懒加载
+- [ ] 路由懒加载
+- [ ] 代码分割
+
+---
+
+## 🔧 调试工具配置
+
+### Vite 调试配置
+
+**vite.config.ts**:
+```typescript
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+
+export default defineConfig({
+  plugins: [vue()],
+  server: {
+    port: 5173,
+    open: true
+  },
+  build: {
+    sourcemap: true,  // 生成 source map
+    minify: false     // 开发环境不压缩
+  }
+})
+```
+
+---
+
+### VS Code 调试配置
+
+**.vscode/launch.json**:
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Vue: Chrome",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}",
+      "sourceMaps": true
+    }
+  ]
+}
+```
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[Vue.js Debugging Guide](https://vuejs.org/guide/scaling-up/debugging.html)** - Vue 官方调试指南
+- **[Google TypeScript Debugging](https://google.github.io/eng-practices/)** - Google TypeScript 调试指南
+- **[Microsoft Vue Debugging](https://code.visualstudio.com/docs/nodejs/vuejs-tutorial)** - Microsoft Vue 调试指南
+
+### 学习资源
+
+- **[Vue DevTools Documentation](https://devtools.vuejs.org/)** - Vue DevTools 文档
+- **[Pinia DevTools](https://pinia.vuejs.org/cookbook/devtools-extraction.html)** - Pinia DevTools
+- **[Chrome DevTools](https://developer.chrome.com/docs/devtools/)** - Chrome DevTools
+
+### 工具文档
+
+- **[Vite Debugging](https://vitejs.dev/guide/debugging.html)** - Vite 调试
+- **[Vue Test Utils](https://test-utils.vuejs.org/)** - Vue 测试工具
+- **[Playwright Documentation](https://playwright.dev/)** - Playwright 文档
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，基于 Google/Microsoft 最佳实践 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🟡 中（核心技能）

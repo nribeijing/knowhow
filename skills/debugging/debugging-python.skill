@@ -1,0 +1,675 @@
+# Skill: Python 调试
+
+> 基于 Google、Microsoft 最佳实践的 Python 调试技能
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🔴 高（核心技能）
+
+---
+
+## 📋 前置技能
+
+- ✅ [debugging.skill](../debugging.skill) - 通用调试
+- ✅ [testing-python.skill](../testing/testing-python.skill) - Python 测试
+
+---
+
+## 📋 标准来源
+
+### 核心标准
+
+- **[Google Python Debugging Guide](https://google.github.io/eng-practices/)** - Google Python 调试指南
+- **[Microsoft Python Debugging](https://docs.microsoft.com/en-us/python/)** - Microsoft Python 调试指南
+- **[Python Debugging Tools](https://docs.python.org/3/library/debug.html)** - Python 官方调试工具
+
+### 工具栈
+
+- **pdb/ipdb** - Python 调试器
+- **logging** - 日志记录
+- **py-spy** - 性能分析
+- **memory_profiler** - 内存分析
+- **cProfile** - 性能分析
+- **pdbpp** - 增强版调试器
+
+---
+
+## 🔧 Python 调试工具
+
+### pdb 调试器
+
+**基本使用**:
+```python
+import pdb
+
+def process_data(data):
+    pdb.set_trace()  # 设置断点
+    result = transform(data)
+    return result
+```
+
+**常用命令**:
+```bash
+# 调试命令
+n (next)          # 执行下一行
+s (step)          # 进入函数
+c (continue)      # 继续执行
+q (quit)          # 退出调试
+l (list)          # 显示代码
+p (print)         # 打印变量
+pp (pretty print) # 美观打印
+w (where)         # 显示堆栈
+u (up)            # 向上堆栈
+d (down)          # 向下堆栈
+a (args)          # 显示参数
+h (help)          # 帮助
+
+# 断点命令
+b (break)         # 设置断点
+cl (clear)        # 清除断点
+disable           # 禁用断点
+enable            # 启用断点
+```
+
+**条件断点**:
+```python
+def process_items(items):
+    for i, item in enumerate(items):
+        if i == 10:
+            pdb.set_trace()  # 在第 10 次循环断点
+        process_item(item)
+```
+
+---
+
+### ipdb 增强调试器
+
+**安装和使用**:
+```bash
+pip install ipdb
+```
+
+```python
+import ipdb
+
+def process_data(data):
+    ipdb.set_trace()  # 增强版调试器
+    # 支持 Tab 补全、语法高亮
+    result = transform(data)
+    return result
+```
+
+**ipdb 特性**:
+```
+✅ Tab 补全
+✅ 语法高亮
+✅ 更好的对象检查
+✅ 历史命令
+✅ 代码导航
+```
+
+---
+
+### logging 调试
+
+**基础配置**:
+```python
+import logging
+
+# 基础配置
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('app.log'),
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
+# 使用日志
+logger.debug("调试信息")
+logger.info("正常信息")
+logger.warning("警告信息")
+logger.error("错误信息")
+logger.critical("严重错误")
+```
+
+**高级配置**:
+```python
+import logging
+import logging.handlers
+
+# 创建 logger
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+# 创建 handler
+file_handler = logging.handlers.RotatingFileHandler(
+    'app.log',
+    maxBytes=10*1024*1024,  # 10MB
+    backupCount=5
+)
+file_handler.setLevel(logging.DEBUG)
+
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+
+# 创建 formatter
+formatter = logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s'
+)
+file_handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
+
+# 添加 handler
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
+```
+
+**调试日志最佳实践**:
+```python
+# ✅ 好的日志
+logger.debug(f"处理数据：{data}", extra={"user_id": user_id})
+logger.info(f"用户 {user_id} 登录成功")
+logger.warning(f"API 调用失败，重试中：{error}")
+logger.error(f"处理失败：{error}", exc_info=True)
+
+# ❌ 避免的日志
+print("调试信息")  # 使用 print
+logger.debug(data)  # 无上下文
+logger.error("出错了")  # 无详细信息
+```
+
+---
+
+## 🚀 FastAPI 调试技巧
+
+### 请求日志
+
+**中间件日志**:
+```python
+import logging
+from fastapi import Request
+from starlette.middleware.base import BaseHTTPMiddleware
+
+logger = logging.getLogger(__name__)
+
+class RequestLogMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        # 记录请求
+        logger.info(
+            f"请求：{request.method} {request.url.path}",
+            extra={
+                "method": request.method,
+                "path": request.url.path,
+                "client": request.client.host
+            }
+        )
+        
+        # 记录请求体（注意：只能读取一次）
+        body = await request.body()
+        logger.debug(f"请求体：{body.decode()}")
+        
+        # 执行请求
+        response = await call_next(request)
+        
+        # 记录响应
+        logger.info(
+            f"响应：{response.status_code}",
+            extra={"status_code": response.status_code}
+        )
+        
+        return response
+
+# 使用中间件
+app.add_middleware(RequestLogMiddleware)
+```
+
+---
+
+### 异常调试
+
+**全局异常处理**:
+```python
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import JSONResponse
+import logging
+
+logger = logging.getLogger(__name__)
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    # 记录异常详情
+    logger.error(
+        f"未处理异常：{exc}",
+        extra={
+            "path": request.url.path,
+            "method": request.method,
+        },
+        exc_info=True  # 记录堆栈跟踪
+    )
+    
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "internal_error",
+            "message": "服务器内部错误"
+        }
+    )
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    # 记录 HTTP 异常
+    logger.warning(
+        f"HTTP 异常：{exc.status_code} - {exc.detail}",
+        extra={
+            "path": request.url.path,
+            "status_code": exc.status_code
+        }
+    )
+    
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": exc.detail}
+    )
+```
+
+---
+
+### 数据库调试
+
+**SQL 查询日志**:
+```python
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+import logging
+
+logger = logging.getLogger(__name__)
+
+@event.listens_for(Engine, "before_cursor_execute")
+def receive_before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    logger.debug(
+        f"SQL 查询：{statement}",
+        extra={"parameters": parameters}
+    )
+
+@event.listens_for(Engine, "after_cursor_execute")
+def receive_after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    logger.debug("SQL 执行完成")
+```
+
+**慢查询日志**:
+```python
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+import time
+import logging
+
+logger = logging.getLogger(__name__)
+
+@event.listens_for(Engine, "before_cursor_execute")
+def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    conn.info.setdefault('query_start_time', []).append(time.time())
+
+@event.listens_for(Engine, "after_cursor_execute")
+def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    total = time.time() - conn.info['query_start_time'].pop(-1)
+    if total > 1.0:  # 超过 1 秒的查询
+        logger.warning(
+            f"慢查询：{total:.2f}s",
+            extra={"statement": statement, "duration": total}
+        )
+```
+
+---
+
+## 🔍 性能调试
+
+### cProfile 性能分析
+
+**基础使用**:
+```python
+import cProfile
+import pstats
+
+def process_data():
+    # 处理逻辑
+    ...
+
+# 性能分析
+profiler = cProfile.Profile()
+profiler.enable()
+
+process_data()
+
+profiler.disable()
+
+# 输出统计
+stats = pstats.Stats(profiler)
+stats.sort_stats('cumulative')
+stats.print_stats(10)  # 打印前 10 个最耗时的函数
+```
+
+**命令行使用**:
+```bash
+# 运行脚本并分析性能
+python -m cProfile -o output.prof app.py
+
+# 查看分析结果
+python -m pstats output.prof
+```
+
+---
+
+### py-spy 性能分析
+
+**安装和使用**:
+```bash
+pip install py-spy
+```
+
+**命令行分析**:
+```bash
+# 实时查看性能
+py-spy top -- python app.py
+
+# 生成火焰图
+py-spy record -o profile.svg -- python app.py
+
+# 附加到运行中的进程
+py-spy record -o profile.svg --pid 12345
+```
+
+**代码中使用**:
+```python
+from py_spy import Profiler
+
+profiler = Profiler()
+profiler.start()
+
+# 运行代码
+process_data()
+
+profiler.stop()
+profiler.export_flamegraph("profile.svg")
+```
+
+---
+
+### 内存分析
+
+**memory_profiler 使用**:
+```python
+from memory_profiler import profile
+
+@profile
+def process_large_data():
+    data = []
+    for i in range(1000000):
+        data.append(i * 2)
+    return data
+
+# 运行分析
+# python -m memory_profiler app.py
+```
+
+**内存泄漏排查**:
+```python
+import tracemalloc
+
+# 开始追踪
+tracemalloc.start()
+
+# 运行代码
+process_data()
+
+# 获取内存快照
+snapshot = tracemalloc.take_snapshot()
+top_stats = snapshot.statistics('lineno')
+
+# 打印前 10 个内存使用最多的位置
+for stat in top_stats[:10]:
+    print(stat)
+
+# 停止追踪
+tracemalloc.stop()
+```
+
+---
+
+## 🐛 常见错误排查
+
+### 异步代码调试
+
+**常见问题**:
+```python
+# ❌ 错误：在异步函数中使用同步代码
+async def fetch_data():
+    response = requests.get(url)  # 阻塞操作
+    return response.json()
+
+# ✅ 正确：使用异步库
+async def fetch_data():
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            return await response.json()
+```
+
+**调试技巧**:
+```python
+import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
+
+async def debug_async(func):
+    """异步函数调试装饰器"""
+    async def wrapper(*args, **kwargs):
+        logger.debug(f"调用 {func.__name__}")
+        try:
+            result = await func(*args, **kwargs)
+            logger.debug(f"{func.__name__} 完成")
+            return result
+        except Exception as e:
+            logger.error(f"{func.__name__} 失败：{e}", exc_info=True)
+            raise
+    return wrapper
+
+@debug_async
+async def fetch_user(user_id):
+    ...
+```
+
+---
+
+### 循环导入排查
+
+**问题识别**:
+```python
+# module_a.py
+from module_b import ClassB  # 循环导入
+
+# module_b.py
+from module_a import ClassA  # 循环导入
+```
+
+**解决方案**:
+```python
+# 方案 1: 使用 TYPE_CHECKING
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from module_b import ClassB
+
+# 方案 2: 延迟导入
+def get_class_b():
+    from module_b import ClassB
+    return ClassB
+
+# 方案 3: 重构代码结构
+# 将公共代码提取到单独模块
+```
+
+---
+
+### 数据库连接问题
+
+**连接池调试**:
+```python
+from sqlalchemy import create_engine, event
+import logging
+
+logger = logging.getLogger(__name__)
+
+engine = create_engine(
+    DATABASE_URL,
+    pool_size=10,
+    max_overflow=20,
+    pool_pre_ping=True,
+    echo=True  # 输出 SQL 日志
+)
+
+@event.listens_for(engine, "connect")
+def on_connect(dbapi_conn, connection_record):
+    logger.debug("数据库连接创建")
+
+@event.listens_for(engine, "checkout")
+def on_checkout(dbapi_conn, connection_record, connection_proxy):
+    logger.debug("数据库连接检出")
+
+@event.listens_for(engine, "checkin")
+def on_checkin(dbapi_conn, connection_record):
+    logger.debug("数据库连接归还")
+```
+
+---
+
+## 📋 调试检查清单
+
+### 日志配置
+
+- [ ] 日志级别合理
+- [ ] 日志格式完整
+- [ ] 日志轮转配置
+- [ ] 异常堆栈记录
+- [ ] 敏感信息脱敏
+
+### 调试工具
+
+- [ ] pdb/ipdb 使用
+- [ ] logging 配置
+- [ ] 性能分析工具
+- [ ] 内存分析工具
+- [ ] 数据库调试
+
+### FastAPI 特定
+
+- [ ] 请求日志
+- [ ] 异常处理
+- [ ] SQL 查询日志
+- [ ] 慢查询日志
+- [ ] 异步代码调试
+
+### 性能调试
+
+- [ ] cProfile 分析
+- [ ] py-spy 分析
+- [ ] 内存分析
+- [ ] 慢查询优化
+- [ ] 瓶颈定位
+
+---
+
+## 🔧 调试工具配置
+
+### VS Code 调试配置
+
+**.vscode/launch.json**:
+```json
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: FastAPI",
+            "type": "python",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": [
+                "app.main:app",
+                "--reload",
+                "--port",
+                "8000"
+            ],
+            "jinja": true,
+            "justMyCode": true
+        },
+        {
+            "name": "Python: 当前文件",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        }
+    ]
+}
+```
+
+---
+
+### PyCharm 调试配置
+
+**运行配置**:
+```
+1. Run → Edit Configurations
+2. 添加 Python 配置
+3. Script path: app/main.py
+4. Parameters: --reload --port 8000
+5. 勾选 Gevent compatible（如使用）
+6. 应用并运行
+```
+
+**断点类型**:
+```
+✅ 普通断点
+✅ 条件断点
+✅ 异常断点
+✅ 日志断点
+```
+
+---
+
+## 📚 参考资源
+
+### 标准文档
+
+- **[Google Python Debugging Guide](https://google.github.io/eng-practices/)** - Google Python 调试指南
+- **[Microsoft Python Debugging](https://docs.microsoft.com/en-us/python/)** - Microsoft Python 调试指南
+- **[Python Debugging Tools](https://docs.python.org/3/library/debug.html)** - Python 官方调试工具
+
+### 学习资源
+
+- **[Python Debugging Best Practices](https://realpython.com/python-debugging/)** - Real Python 调试教程
+- **[FastAPI Debugging](https://fastapi.tiangolo.com/tutorial/debugging/)** - FastAPI 调试
+- **[PyCharm Debugging](https://www.jetbrains.com/help/pycharm/debugging-code-in-python-project.html)** - PyCharm 调试
+
+### 工具文档
+
+- **[pdb Documentation](https://docs.python.org/3/library/pdb.html)** - pdb 文档
+- **[logging Documentation](https://docs.python.org/3/library/logging.html)** - logging 文档
+- **[py-spy Documentation](https://github.com/benfred/py-spy)** - py-spy 文档
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，基于 Google/Microsoft 最佳实践 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🔴 高（核心技能）

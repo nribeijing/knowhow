@@ -1,0 +1,688 @@
+# Rule: API 安全规范
+
+> 基于 OWASP API Security、OAuth 2.0、JWT 等核心安全标准
+
+**版本**: v1.0  
+**状态**: ✅ 已实施  
+**优先级**: 🔴 高（核心规范）
+
+---
+
+## 📋 标准来源
+
+### 核心安全标准
+
+- **[OWASP API Security Top 10](https://owasp.org/www-project-api-security/)** - API 安全十大风险
+- **[RFC 6749 - OAuth 2.0](https://tools.ietf.org/html/rfc6749)** - OAuth 2.0 授权框架
+- **[RFC 7519 - JWT](https://tools.ietf.org/html/rfc7519)** - JSON Web Token
+- **[RFC 8446 - TLS 1.3](https://tools.ietf.org/html/rfc8446)** - TLS 传输安全
+- **[RFC 6454 - CORS](https://tools.ietf.org/html/rfc6454)** - 跨域资源共享
+
+### 行业最佳实践
+
+- **[OWASP Cheat Sheets](https://cheatsheetseries.owasp.org/)** - 安全速查表
+- **[Google API Security](https://cloud.google.com/apis/security)** - Google API 安全
+- **[Stripe Security](https://stripe.com/docs/security)** - Stripe 安全实践
+- **[NIST Encryption Standards](https://www.nist.gov/crypto-toolkits)** - NIST 加密标准
+
+---
+
+## 🎯 核心原则
+
+### 1. 纵深防御 (Defense in Depth)
+
+> "安全应该多层实施，不依赖单一防护措施。"
+> — OWASP
+
+**实践**:
+- ✅ 认证 + 授权 + 限流
+- ✅ 输入验证 + 输出编码
+- ✅ 传输加密 + 存储加密
+- ✅ 日志审计 + 监控告警
+
+### 2. 最小权限 (Least Privilege)
+
+> "只授予执行任务所需的最小权限。"
+> — NIST
+
+**实践**:
+- ✅ 基于角色的权限控制 (RBAC)
+- ✅ 对象级权限检查
+- ✅ 字段级权限控制
+- ✅ 定期审查权限
+
+### 3. 默认安全 (Secure by Default)
+
+> "默认配置应该是安全的。"
+> — OWASP
+
+**实践**:
+- ✅ 默认拒绝所有访问
+- ✅ 强制 HTTPS
+- ✅ 默认限流
+- ✅ 安全头默认启用
+
+### 4. 不信任原则 (Never Trust)
+
+> "永远不要信任用户输入或外部系统。"
+> — OWASP
+
+**实践**:
+- ✅ 验证所有输入
+- ✅ 编码所有输出
+- ✅ 验证第三方 API 响应
+- ✅ 实施零信任架构
+
+---
+
+## 🔐 认证安全
+
+### JWT Token 规范
+
+#### Token 结构
+
+```json
+Header:
+{
+  "alg": "RS256",
+  "typ": "JWT"
+}
+
+Payload:
+{
+  "sub": "user_id",
+  "iat": 1710403800,
+  "exp": 1710407400,
+  "iss": "your-api.com",
+  "aud": "your-app",
+  "role": "admin"
+}
+
+Signature:
+RS256(
+  base64UrlEncode(header) + "." + base64UrlEncode(payload),
+  private_key
+)
+```
+
+#### Token 管理
+
+**Access Token**:
+```python
+# ✅ 推荐配置
+- 算法：RS256 (非对称加密)
+- 过期时间：15-30 分钟
+- 存储：HttpOnly Cookie
+- 传输：HTTPS + Secure Cookie
+```
+
+**Refresh Token**:
+```python
+# ✅ 推荐配置
+- 算法：RS256
+- 过期时间：7-30 天
+- 存储：数据库（可撤销）
+- 使用：单次使用（轮换）
+```
+
+#### 实现示例
+
+```python
+from datetime import datetime, timedelta
+from jose import jwt
+
+ALGORITHM = "RS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+REFRESH_TOKEN_EXPIRE_DAYS = 7
+
+def create_access_token(data: dict, expires_delta: timedelta = None):
+    """创建 Access Token"""
+    to_encode = data.copy()
+    
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
+    to_encode.update({
+        "exp": expire,
+        "iat": datetime.utcnow(),
+        "type": "access"
+    })
+    
+    encoded_jwt = jwt.encode(to_encode, PRIVATE_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+def create_refresh_token(data: dict):
+    """创建 Refresh Token"""
+    to_encode = data.copy()
+    
+    expire = datetime.utcnow() + timedelta(days=7)
+    to_encode.update({
+        "exp": expire,
+        "iat": datetime.utcnow(),
+        "type": "refresh"
+    })
+    
+    encoded_jwt = jwt.encode(to_encode, PRIVATE_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+def verify_token(token: str, token_type: str = "access"):
+    """验证 Token"""
+    try:
+        payload = jwt.decode(token, PUBLIC_KEY, algorithms=[ALGORITHM])
+        
+        # 验证 Token 类型
+        if payload.get("type") != token_type:
+            raise JWTError("Token 类型错误")
+        
+        # 验证过期时间
+        if datetime.utcnow() > datetime.fromtimestamp(payload["exp"]):
+            raise JWTError("Token 已过期")
+        
+        return payload
+    except JWTError as e:
+        logger.warning(f"Token 验证失败：{e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "token_invalid", "message": "Token 无效或已过期"}
+        )
+```
+
+#### 安全要求
+
+| 要求 | 状态 | 说明 |
+|------|------|------|
+| **使用 RS256** | ✅ 必须 | 非对称加密更安全 |
+| **短过期时间** | ✅ 必须 | Access Token ≤ 30 分钟 |
+| **Token 轮换** | ✅ 必须 | Refresh Token 单次使用 |
+| **安全存储** | ✅ 必须 | HttpOnly + Secure Cookie |
+| **HTTPS 传输** | ✅ 必须 | 强制 HTTPS |
+
+---
+
+### OAuth 2.0 授权
+
+#### 授权模式
+
+**授权码模式（推荐）**:
+```
+1. 用户 → 授权请求 → 授权服务器
+2. 用户 → 登录授权 → 授权服务器
+3. 授权服务器 → 授权码 → 客户端
+4. 客户端 → 授权码 → Token 请求 → 授权服务器
+5. 授权服务器 → Access Token → 客户端
+```
+
+**实现要求**:
+```python
+# ✅ 必须实施
+- PKCE (Proof Key for Code Exchange)
+- 状态参数 (state) 防 CSRF
+- 重定向 URI 白名单
+- 授权码单次使用
+```
+
+---
+
+## 🔒 授权安全
+
+### RBAC 权限模型
+
+#### 角色定义
+
+```python
+class Role(str, Enum):
+    """用户角色"""
+    ADMIN = "admin"
+    APPROVER_NODE1 = "approver_node1"
+    APPROVER_NODE2 = "approver_node2"
+    GENERAL_USER = "general_user"
+```
+
+#### 权限检查
+
+**功能级授权**:
+```python
+from fastapi import Depends
+
+async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
+    """获取当前用户"""
+    payload = verify_token(token)
+    user = await get_user_by_id(payload["sub"])
+    
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "unauthorized", "message": "未认证"}
+        )
+    
+    return user
+
+async def require_role(required_role: Role):
+    """角色要求装饰器"""
+    async def role_checker(current_user: User = Depends(get_current_user)):
+        if current_user.role != required_role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"code": "forbidden", "message": "权限不足"}
+            )
+        return current_user
+    return role_checker
+
+# 使用示例
+@app.post("/users")
+async def create_user(
+    user_in: UserCreate,
+    current_user: User = Depends(require_role(Role.ADMIN))
+):
+    ...
+```
+
+**对象级授权**:
+```python
+@app.get("/reservations/{reservation_id}")
+async def get_reservation(
+    reservation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """获取预约详情 - 对象级授权"""
+    reservation = await db.get(Reservation, reservation_id)
+    
+    if not reservation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": "预约不存在"}
+        )
+    
+    # 对象级权限检查
+    if not (
+        current_user.role == Role.ADMIN or
+        reservation.user_id == current_user.id or
+        (reservation.approver_node1_id == current_user.id and current_user.role == Role.APPROVER_NODE1)
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "forbidden", "message": "无权访问该预约"}
+        )
+    
+    return reservation
+```
+
+---
+
+## 🛡️ 输入验证
+
+### Pydantic 验证
+
+#### 基础验证
+
+```python
+from pydantic import BaseModel, EmailStr, Field, validator
+import re
+
+class UserCreate(BaseModel):
+    """创建用户请求 - 完整验证"""
+    
+    # 邮箱验证
+    email: EmailStr
+    
+    # 字符串长度验证
+    name: str = Field(..., min_length=1, max_length=100)
+    
+    # 密码强度验证
+    password: str = Field(..., min_length=8, max_length=128)
+    
+    # 正则验证
+    phone: str = Field(..., regex=r'^\+?1?\d{9,15}$')
+    
+    @validator('password')
+    def validate_password(cls, v):
+        """密码强度验证"""
+        if not any(c.isupper() for c in v):
+            raise ValueError('密码必须包含大写字母')
+        if not any(c.isdigit() for c in v):
+            raise ValueError('密码必须包含数字')
+        if not any(c in '!@#$%^&*(),.?":{}|<>' for c in v):
+            raise ValueError('密码必须包含特殊字符')
+        return v
+```
+
+#### 自定义验证
+
+```python
+class ReservationCreate(BaseModel):
+    """创建预约请求"""
+    
+    museum_id: UUID
+    hall_id: UUID
+    
+    # 日期验证
+    visit_date: date = Field(..., description="参观日期")
+    
+    # 时间范围验证
+    visit_time: int = Field(..., ge=10, le=18, description="参观时间 (10-18 点)")
+    
+    # 人数验证
+    visitor_count: int = Field(..., gt=0, le=50, description="参观人数")
+    
+    @validator('visit_date')
+    def validate_visit_date(cls, v):
+        """参观日期必须是未来"""
+        if v < date.today():
+            raise ValueError('参观日期不能是过去')
+        return v
+    
+    @validator('visit_time')
+    def validate_visit_time(cls, v):
+        """参观时间验证"""
+        if v < 10 or v > 18:
+            raise ValueError('参观时间必须在 10:00-18:00 之间')
+        return v
+```
+
+---
+
+### SQL 注入防护
+
+#### ORM 参数化查询
+
+```python
+from sqlalchemy import select
+
+# ✅ 推荐：使用 ORM 参数化查询
+async def get_user_by_email(db: AsyncSession, email: str):
+    result = await db.execute(
+        select(User).where(User.email == email)
+    )
+    return result.scalar_one_or_none()
+
+# ❌ 避免：字符串拼接
+async def get_user_by_email(db: AsyncSession, email: str):
+    query = f"SELECT * FROM users WHERE email = '{email}'"
+    result = await db.execute(query)
+    return result.fetchone()
+```
+
+---
+
+## 🚫 限流和防刷
+
+### 限流策略
+
+#### 固定窗口限流
+
+```python
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
+
+@app.post("/auth/login")
+@limiter.limit("5/minute")  # 每分钟最多 5 次
+async def login(request: Request, form_data: OAuth2PasswordRequestForm):
+    """登录限流 - 防暴力破解"""
+    ...
+```
+
+#### 限流配置
+
+| 端点类型 | 限流策略 | 说明 |
+|---------|---------|------|
+| **登录** | 5 次/分钟 | 防暴力破解 |
+| **注册** | 3 次/小时 | 防恶意注册 |
+| **一般 API** | 100 次/分钟 | 常规限流 |
+| **导出 API** | 10 次/小时 | 资源密集型 |
+| **搜索 API** | 30 次/分钟 | 防止滥用 |
+
+---
+
+### 限流响应头
+
+```http
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 95
+X-RateLimit-Reset: 1710407400
+Retry-After: 3600
+```
+
+---
+
+## 🔐 数据传输安全
+
+### HTTPS 强制
+
+```python
+from fastapi import FastAPI
+
+app = FastAPI()
+
+# HSTS 头
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    return response
+```
+
+### CORS 配置
+
+```python
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    # ✅ 明确指定允许的源
+    allow_origins=[
+        "https://example.com",
+        "https://app.example.com"
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allow_headers=["Authorization", "Content-Type"],
+    expose_headers=["X-RateLimit-Limit", "X-RateLimit-Remaining"],
+)
+
+# ❌ 避免：允许所有源
+# allow_origins=["*"]
+```
+
+---
+
+## 🔑 密码安全
+
+### 密码存储
+
+```python
+from passlib.context import CryptContext
+
+# ✅ 推荐：使用 Argon2
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+
+# 加密密码
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+# 验证密码
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+# 使用示例
+@app.post("/users")
+async def create_user(user_in: UserCreate):
+    hashed_password = hash_password(user_in.password)
+    user = User(**user_in.dict(), hashed_password=hashed_password)
+    await db.add(user)
+    await db.commit()
+```
+
+### 密码策略
+
+| 要求 | 最小值 | 推荐值 |
+|------|--------|--------|
+| **最小长度** | 8 位 | 12 位 |
+| **大写字母** | ✅ 必须 | ✅ 必须 |
+| **小写字母** | ✅ 必须 | ✅ 必须 |
+| **数字** | ✅ 必须 | ✅ 必须 |
+| **特殊字符** | ✅ 必须 | ✅ 必须 |
+| **密码历史** | - | 最近 5 次 |
+| **最长有效期** | - | 90 天 |
+
+---
+
+## 📝 安全审计
+
+### 安全日志
+
+```python
+import logging
+from datetime import datetime
+
+logger = logging.getLogger("security")
+
+class SecurityEvent(str, Enum):
+    """安全事件类型"""
+    LOGIN_SUCCESS = "login_success"
+    LOGIN_FAILED = "login_failed"
+    LOGOUT = "logout"
+    PASSWORD_CHANGE = "password_change"
+    PERMISSION_DENIED = "permission_denied"
+    RATE_LIMIT_EXCEEDED = "rate_limit_exceeded"
+
+def log_security_event(
+    event: SecurityEvent,
+    user_id: str = None,
+    ip_address: str = None,
+    user_agent: str = None,
+    details: dict = None
+):
+    """记录安全事件"""
+    logger.info({
+        "timestamp": datetime.utcnow().isoformat(),
+        "level": "INFO",
+        "event": event.value,
+        "user_id": user_id,
+        "ip_address": ip_address,
+        "user_agent": user_agent,
+        "details": details or {}
+    })
+
+# 使用示例
+@app.post("/auth/login")
+async def login(request: Request, form_data: OAuth2PasswordRequestForm):
+    user = await authenticate(form_data.username, form_data.password)
+    
+    if user:
+        log_security_event(
+            event=SecurityEvent.LOGIN_SUCCESS,
+            user_id=str(user.id),
+            ip_address=request.client.host,
+            user_agent=request.headers.get("user-agent")
+        )
+        return create_access_token({"sub": str(user.id)})
+    else:
+        log_security_event(
+            event=SecurityEvent.LOGIN_FAILED,
+            ip_address=request.client.host,
+            user_agent=request.headers.get("user-agent"),
+            details={"email": form_data.username}
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "unauthorized", "message": "账号或密码错误"}
+        )
+```
+
+### 审计要求
+
+| 事件类型 | 日志内容 | 保留时间 |
+|---------|---------|---------|
+| **登录成功/失败** | 用户 ID、IP、时间 | 180 天 |
+| **权限变更** | 用户 ID、操作者、变更内容 | 365 天 |
+| **敏感数据访问** | 用户 ID、数据类型、时间 | 365 天 |
+| **配置变更** | 操作者、变更内容、时间 | 365 天 |
+| **异常事件** | 完整上下文、堆栈跟踪 | 365 天 |
+
+---
+
+## 📋 安全检查清单
+
+### 认证安全
+
+- [ ] 使用 JWT RS256 非对称加密
+- [ ] Access Token 过期时间 ≤ 30 分钟
+- [ ] Refresh Token 单次使用（轮换）
+- [ ] Token 存储在 HttpOnly Cookie
+- [ ] 强制 HTTPS 传输
+- [ ] 实现 Token 撤销机制
+
+### 授权安全
+
+- [ ] 实施 RBAC 权限模型
+- [ ] 对象级权限检查
+- [ ] 字段级权限控制
+- [ ] 最小权限原则
+- [ ] 定期审查权限
+
+### 输入验证
+
+- [ ] 所有输入使用 Pydantic 验证
+- [ ] 密码强度验证
+- [ ] 邮箱格式验证
+- [ ] SQL 参数化查询
+- [ ] XSS 防护
+
+### 限流防护
+
+- [ ] 登录限流（5 次/分钟）
+- [ ] 注册限流（3 次/小时）
+- [ ] 一般 API 限流（100 次/分钟）
+- [ ] 限流响应头
+- [ ] 限流日志
+
+### 数据安全
+
+- [ ] 密码使用 Argon2/bcrypt 哈希
+- [ ] 敏感数据加密存储
+- [ ] HTTPS 强制
+- [ ] CORS 正确配置
+- [ ] 安全头设置
+
+### 审计日志
+
+- [ ] 记录登录事件
+- [ ] 记录权限变更
+- [ ] 记录敏感数据访问
+- [ ] 日志保留 180+ 天
+- [ ] 不记录敏感信息
+
+---
+
+## 🔗 参考资源
+
+### 标准文档
+
+- **[OWASP API Security Top 10](https://owasp.org/www-project-api-security/)** - API 安全风险
+- **[RFC 6749 - OAuth 2.0](https://tools.ietf.org/html/rfc6749)** - OAuth 2.0 标准
+- **[RFC 7519 - JWT](https://tools.ietf.org/html/rfc7519)** - JWT 标准
+- **[RFC 8446 - TLS 1.3](https://tools.ietf.org/html/rfc8446)** - TLS 标准
+
+### 最佳实践
+
+- **[OWASP Cheat Sheets](https://cheatsheetseries.owasp.org/)** - 安全速查表
+- **[Google API Security](https://cloud.google.com/apis/security)** - Google API 安全
+- **[Stripe Security](https://stripe.com/docs/security)** - Stripe 安全实践
+
+---
+
+## 📝 版本历史
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v1.0 | 2026-03-14 | 初始版本，包含完整的 API 安全规范 |
+
+---
+
+**维护团队**: NRI Beijing Development Team  
+**最后更新**: 2026-03-14  
+**优先级**: 🔴 高（核心规范）

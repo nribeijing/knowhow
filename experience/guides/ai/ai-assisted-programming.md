@@ -230,161 +230,45 @@ API 层测试 → 用测试 DB (验证 SQL)
 
 ## 💡 实战经验
 
+> ⚠️ **注意**: 5 个核心陷阱的详细说明已移至 [常见陷阱](./common-pitfalls.md)，此处仅保留要点。
+
 ### 经验 1: 路由顺序陷阱
 
-**问题**: FastAPI 按定义顺序匹配路由，具体路由必须放在参数路由之前。
+**要点**: FastAPI 按定义顺序匹配路由，静态路由必须放在参数路由之前。
 
-**错误示例**:
-```python
-# ❌ 错误：参数路由在前
-@router.get("/{reservation_id}")
-async def get_reservation(reservation_id: str):
-    ...
-
-@router.get("/admin")  # ❌ 永远不会被匹配！
-async def get_all_reservations():
-    ...
-```
-
-**正确做法**:
-```python
-# ✅ 正确：具体路由在前
-@router.get("/admin")
-async def get_all_reservations():
-    ...
-
-@router.get("/{reservation_id}")
-async def get_reservation(reservation_id: str):
-    ...
-```
-
-**教训**:
-- AI 可能忽略路由顺序
-- 检查清单必须包含"路由顺序"项
-- 人类审查时重点检查
+**详见**: [常见陷阱 - 路由顺序](./common-pitfalls.md#1️⃣-路由顺序陷阱) | [案例](../../case-studies/api-route-order-issue.md)
 
 ---
 
 ### 经验 2: Mock 异步方法
 
-**问题**: AsyncMock 的属性也是 Mock，不能直接 await。
+**要点**: AsyncMock 的属性也是 Mock，不能直接 await，需用异步函数包装。
 
-**错误示例**:
-```python
-# ❌ 错误
-mock_service = AsyncMock()
-mock_service.get_all.return_value = [...]
-
-# 调用时抛出：TypeError: object MagicMock can't be used in 'await' expression
-```
-
-**正确做法**:
-```python
-# ✅ 正确：使用异步函数包装
-mock_service = MagicMock()
-
-async def mock_get_all(*args, **kwargs):
-    return [...]
-
-mock_service.get_all = mock_get_all
-```
-
-**教训**:
-- AI 可能不熟悉 AsyncMock 的坑
-- 检查清单必须包含"Mock 验证"项
-- 测试运行失败时优先检查 Mock
+**详见**: [常见陷阱 - Mock 异步](./common-pitfalls.md#2️⃣-mock-异步方法陷阱) | [案例](../../case-studies/mock-async-method-issue.md)
 
 ---
 
 ### 经验 3: 权限验证
 
-**问题**: API 使用了错误的依赖注入，导致权限控制失效。
+**要点**: 使用正确的依赖注入（如 `get_current_admin_user` 而非 `get_current_user`）。
 
-**错误示例**:
-```python
-# ❌ 错误：使用 get_current_user
-@router.post("/")
-async def create_museum(
-    current_user: User = Depends(get_current_user),  # ❌ 所有登录用户
-):
-    """创建新展览馆 - 管理员专用"""
-```
-
-**正确做法**:
-```python
-# ✅ 正确：使用 get_current_admin_user
-@router.post("/")
-async def create_museum(
-    current_user: User = Depends(get_current_admin_user),  # ✅ 仅管理员
-):
-    """创建新展览馆 - 管理员专用"""
-```
-
-**教训**:
-- AI 可能忽略权限验证
-- 检查清单必须包含"权限验证"项
-- 人类审查时重点检查权限
+**详见**: [常见陷阱 - 权限验证](./common-pitfalls.md#3️⃣-权限验证陷阱) | [案例](../../case-studies/permission-validation-issue.md)
 
 ---
 
 ### 经验 4: 测试隔离
 
-**问题**: 全局状态导致测试相互影响。
+**要点**: 全局状态导致测试相互影响，使用 autouse fixture 自动清理。
 
-**错误示例**:
-```python
-# ❌ 错误：限流器全局状态
-async def test_login_rate_limit():
-    # 第 1 个测试消耗了限流配额
-
-async def test_login_success():
-    # ❌ 直接返回 429（因为限流配额已用完）
-```
-
-**正确做法**:
-```python
-# ✅ 正确：每个测试前重置
-@pytest.fixture(autouse=True)
-def reset_rate_limiter():
-    reset_limiter()
-    yield
-    reset_limiter()
-```
-
-**教训**:
-- AI 可能忽略全局状态
-- 检查清单必须包含"测试隔离"项
-- 使用 `autouse` fixture 自动清理
+**详见**: [常见陷阱 - 测试隔离](./common-pitfalls.md#4️⃣-测试隔离陷阱) | [案例](../../case-studies/test-isolation-issue.md)
 
 ---
 
 ### 经验 5: 响应模型验证
 
-**问题**: FastAPI 严格验证响应模型，返回数据必须包含所有必填字段。
+**要点**: FastAPI 严格验证响应模型，使用 Helper 函数生成完整数据。
 
-**错误示例**:
-```python
-# ❌ 错误：缺少必填字段
-return {"id": "res1", "status": "pending"}
-# 抛出：ResponseValidationError: 17 validation errors
-```
-
-**正确做法**:
-```python
-# ✅ 正确：返回完整数据
-return {
-    "id": "res1",
-    "status": "pending",
-    "visit_date": "2026-03-20",
-    "visit_time": 14,
-    # ... 所有必填字段
-}
-```
-
-**教训**:
-- AI 可能忽略响应验证
-- 使用 Helper 函数生成完整 Mock 数据
-- 检查清单必须包含"响应验证"项
+**详见**: [常见陷阱 - 响应验证](./common-pitfalls.md#5️⃣-响应验证陷阱) | [案例](../../case-studies/response-validation-issue.md)
 
 ---
 

@@ -267,145 +267,17 @@
 
 ## ⚠️ 常见陷阱
 
-### 1. 路由顺序陷阱
+> ⚠️ **注意**: 5 个核心陷阱的详细说明已移至 [常见陷阱](./common-pitfalls.md)，此处仅保留要点和预防方法。
 
-**问题**: FastAPI 按定义顺序匹配路由。
+| 陷阱 | 要点 | 预防 |
+|------|------|------|
+| **1. 路由顺序** | 静态路由在前 | 检查清单 |
+| **2. Mock 异步** | 异步函数包装 | Helper 函数 |
+| **3. 权限验证** | 正确依赖注入 | 审查确认 |
+| **4. 测试隔离** | autouse fixture | 自动清理 |
+| **5. 响应验证** | Helper 函数 | 完整数据 |
 
-**错误示例**:
-```python
-# ❌ 错误
-@router.get("/{id}")
-@router.get("/admin")  # 永远不会被匹配
-```
-
-**正确做法**:
-```python
-# ✅ 正确
-@router.get("/admin")
-@router.get("/{id}")
-```
-
-**预防**:
-- 检查清单包含"路由顺序"项
-- AI 自查时重点检查
-- 人类审查时确认
-
----
-
-### 2. Mock 异步方法陷阱
-
-**问题**: AsyncMock 的属性也是 Mock，不能直接 await。
-
-**错误示例**:
-```python
-# ❌ 错误
-mock_service = AsyncMock()
-mock_service.get_all.return_value = [...]
-```
-
-**正确做法**:
-```python
-# ✅ 正确
-mock_service = MagicMock()
-async def mock_get_all(*args, **kwargs):
-    return [...]
-mock_service.get_all = mock_get_all
-```
-
-**预防**:
-- 使用 Helper 函数生成 Mock
-- 测试运行失败时优先检查 Mock
-- 记录到经验文档
-
----
-
-### 3. 权限验证陷阱
-
-**问题**: 使用了错误的依赖注入。
-
-**错误示例**:
-```python
-# ❌ 错误
-@router.post("/")
-async def create_museum(
-    current_user: User = Depends(get_current_user),  # 所有登录用户
-):
-```
-
-**正确做法**:
-```python
-# ✅ 正确
-@router.post("/")
-async def create_museum(
-    current_user: User = Depends(get_current_admin_user),  # 仅管理员
-):
-```
-
-**预防**:
-- 检查清单包含"权限验证"项
-- 人类审查时重点检查
-- 使用 Lint 规则自动检查
-
----
-
-### 4. 全局状态陷阱
-
-**问题**: 测试间共享全局状态。
-
-**错误示例**:
-```python
-# ❌ 错误
-async def test_1():
-    # 消耗了限流配额
-
-async def test_2():
-    # ❌ 直接返回 429
-```
-
-**正确做法**:
-```python
-# ✅ 正确
-@pytest.fixture(autouse=True)
-def reset_rate_limiter():
-    reset_limiter()
-    yield
-    reset_limiter()
-```
-
-**预防**:
-- 使用 autouse fixture 自动清理
-- 检查清单包含"测试隔离"项
-- 测试随机顺序运行验证
-
----
-
-### 5. 响应验证陷阱
-
-**问题**: FastAPI 严格验证响应模型。
-
-**错误示例**:
-```python
-# ❌ 错误
-return {"id": "res1", "status": "pending"}
-# 缺少必填字段
-```
-
-**正确做法**:
-```python
-# ✅ 正确
-return {
-    "id": "res1",
-    "status": "pending",
-    "visit_date": "2026-03-20",
-    "visit_time": 14,
-    # ... 所有必填字段
-}
-```
-
-**预防**:
-- 使用 Helper 函数生成完整数据
-- 运行测试验证响应
-- 检查清单包含"响应验证"项
+**详见**: [常见陷阱完整指南](./common-pitfalls.md)
 
 ---
 

@@ -1,0 +1,598 @@
+# AI 辅助编程进阶指南
+
+> 高级技巧 · 常见陷阱 · 效率提升
+
+**创建日期**: 2026-03-15  
+**状态**: 实战总结
+
+---
+
+## 📋 目录
+
+- [上下文管理](#-上下文管理)
+- [任务拆解](#-任务拆解)
+- [质量保证](#-质量保证)
+- [沟通技巧](#-沟通技巧)
+- [常见陷阱](#-常见陷阱)
+- [效率提升](#-效率提升)
+
+---
+
+## 🧠 上下文管理
+
+### 1. 提供完整上下文
+
+**✅ 好的做法**:
+```markdown
+## 项目背景
+展览馆预约管理系统，用于管理展览馆参观预约的审批流程。
+
+## 技术栈
+- 后端：FastAPI + PostgreSQL + ElasticSearch
+- 前端：Vue3 + TypeScript
+- 测试：pytest + AsyncMock
+
+## 当前任务
+实现预约撤回功能，用户可以在待一级审批状态下撤回自己的预约。
+
+## 相关文件
+- `app/api/reservations.py` - 预约 API
+- `app/services/reservation_service.py` - 预约服务
+- `tests/test_reservations_api.py` - 预约测试
+
+## 适用 Rules
+- [API 斜杠规则](../rules/general/api-slash.rule)
+- [代码审查规则](../rules/general/code-review.rule)
+```
+
+**❌ 不好的做法**:
+```markdown
+帮我写个预约撤回功能。
+```
+
+### 2. 管理上下文长度
+
+**策略**:
+```
+1. 核心信息优先
+   - 任务描述
+   - 相关文件
+   - 验收标准
+
+2. 按需展开
+   - 需要时再提供详细设计
+   - 需要时再提供背景信息
+
+3. 分阶段提供
+   - 阶段 1: 任务分析
+   - 阶段 2: 实现方案
+   - 阶段 3: 代码实现
+```
+
+### 3. 保持上下文连贯
+
+**技巧**:
+```markdown
+## 上文回顾
+在之前的对话中，我们：
+1. 分析了任务需求
+2. 确定了技术方案
+3. 编写了 API 层代码
+
+## 当前任务
+现在需要实现服务层代码。
+
+## 相关文件
+- 已完成：`app/api/reservations.py`
+- 待完成：`app/services/reservation_service.py`
+```
+
+---
+
+## 🎯 任务拆解
+
+### 1. 大任务拆解
+
+**方法**:
+```
+原始任务：实现完整的预约管理功能
+
+拆解后:
+1. [ ] 创建预约 API (POST /reservations)
+2. [ ] 查询预约 API (GET /reservations/{id})
+3. [ ] 撤回预约 API (PATCH /reservations/{id}/withdraw)
+4. [ ] 一级审批 API (PATCH /reservations/{id}/approve)
+5. [ ] 二级审批 API (PATCH /reservations/{id}/approve-node2)
+6. [ ] 管理员一览 API (GET /reservations/admin)
+```
+
+**好处**:
+- ✅ 每个任务可独立完成
+- ✅ 降低单次上下文复杂度
+- ✅ 便于测试和审查
+- ✅ 降低 AI 出错概率
+
+### 2. 任务依赖管理
+
+**方法**:
+```markdown
+## 任务依赖
+
+任务 1: 创建预约 API
+- 依赖：无
+- 产出：API 端点
+
+任务 2: 撤回预约 API
+- 依赖：任务 1 完成
+- 原因：需要复用权限验证逻辑
+
+任务 3: 审批 API
+- 依赖：任务 1、2 完成
+- 原因：需要完整的状态流转
+```
+
+### 3. 任务边界明确
+
+**✅ 好的做法**:
+```markdown
+## 任务范围
+- 创建预约 API
+- 查询预约 API
+- 撤回预约 API
+
+## 不在范围
+- 审批功能 (另外的任务)
+- Excel 导出 (另外的任务)
+- 前端页面 (另外的任务)
+```
+
+**❌ 不好的做法**:
+```markdown
+把预约功能都做了。
+```
+
+---
+
+## ✅ 质量保证
+
+### 1. 强制测试覆盖
+
+**要求**:
+```markdown
+## 测试要求
+- 覆盖率 > 90%
+- 必须测试:
+  - 正常路径
+  - 异常路径
+  - 边界条件
+  - 权限验证
+- Mock 外部依赖 (ES/Redis)
+```
+
+### 2. 强制自查流程
+
+**流程**:
+```markdown
+## 自查流程
+
+1. 运行所有测试
+   命令：uv run pytest tests/ -v
+
+2. 运行代码检查
+   命令：uv run ruff check .
+   命令：uv run black --check .
+
+3. 按检查清单自查
+   - 功能正确性
+   - 代码质量
+   - 安全性
+   - 测试质量
+
+4. 输出自查报告
+   格式：[自查报告模板]
+```
+
+### 3. 强制人类审查
+
+**关键节点**:
+```markdown
+## 必须人类审查的节点
+
+1. 核心业务逻辑实现后
+2. 安全性相关代码完成后
+3. 性能关键路径实现后
+4. 外部接口对接后
+5. 数据库结构变更后
+```
+
+---
+
+## 💬 沟通技巧
+
+### 1. 明确期望
+
+**✅ 好的做法**:
+```markdown
+请先分析任务，列出实现方案，等我确认后再开始编码。
+
+输出格式:
+1. 任务理解
+2. 技术方案
+3. 潜在风险
+4. 任务拆解
+```
+
+**❌ 不好的做法**:
+```markdown
+直接开始写代码。
+```
+
+### 2. 建设性反馈
+
+**✅ 好的做法**:
+```markdown
+这个实现有个问题：路由顺序可能导致/admin 被错误匹配。
+
+建议将具体路由 (/admin) 放在参数路由 (/{id}) 之前。
+
+参考：[FastAPI 经验总结](../guides/frameworks/fastapi-lessons.md)
+```
+
+**❌ 不好的做法**:
+```markdown
+写错了，重写。
+```
+
+### 3. 阶段性确认
+
+**方法**:
+```markdown
+## 阶段 1: 任务分析
+[AI 输出分析结果]
+
+人类：分析正确，请继续。
+
+## 阶段 2: 实现方案
+[AI 输出实现方案]
+
+人类：方案可行，但需要注意 XX 问题。
+
+## 阶段 3: 代码实现
+[AI 输出代码]
+
+人类：代码审查通过/需要修改。
+```
+
+---
+
+## ⚠️ 常见陷阱
+
+### 1. 路由顺序陷阱
+
+**问题**: FastAPI 按定义顺序匹配路由。
+
+**错误示例**:
+```python
+# ❌ 错误
+@router.get("/{id}")
+@router.get("/admin")  # 永远不会被匹配
+```
+
+**正确做法**:
+```python
+# ✅ 正确
+@router.get("/admin")
+@router.get("/{id}")
+```
+
+**预防**:
+- 检查清单包含"路由顺序"项
+- AI 自查时重点检查
+- 人类审查时确认
+
+---
+
+### 2. Mock 异步方法陷阱
+
+**问题**: AsyncMock 的属性也是 Mock，不能直接 await。
+
+**错误示例**:
+```python
+# ❌ 错误
+mock_service = AsyncMock()
+mock_service.get_all.return_value = [...]
+```
+
+**正确做法**:
+```python
+# ✅ 正确
+mock_service = MagicMock()
+async def mock_get_all(*args, **kwargs):
+    return [...]
+mock_service.get_all = mock_get_all
+```
+
+**预防**:
+- 使用 Helper 函数生成 Mock
+- 测试运行失败时优先检查 Mock
+- 记录到经验文档
+
+---
+
+### 3. 权限验证陷阱
+
+**问题**: 使用了错误的依赖注入。
+
+**错误示例**:
+```python
+# ❌ 错误
+@router.post("/")
+async def create_museum(
+    current_user: User = Depends(get_current_user),  # 所有登录用户
+):
+```
+
+**正确做法**:
+```python
+# ✅ 正确
+@router.post("/")
+async def create_museum(
+    current_user: User = Depends(get_current_admin_user),  # 仅管理员
+):
+```
+
+**预防**:
+- 检查清单包含"权限验证"项
+- 人类审查时重点检查
+- 使用 Lint 规则自动检查
+
+---
+
+### 4. 全局状态陷阱
+
+**问题**: 测试间共享全局状态。
+
+**错误示例**:
+```python
+# ❌ 错误
+async def test_1():
+    # 消耗了限流配额
+
+async def test_2():
+    # ❌ 直接返回 429
+```
+
+**正确做法**:
+```python
+# ✅ 正确
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    reset_limiter()
+    yield
+    reset_limiter()
+```
+
+**预防**:
+- 使用 autouse fixture 自动清理
+- 检查清单包含"测试隔离"项
+- 测试随机顺序运行验证
+
+---
+
+### 5. 响应验证陷阱
+
+**问题**: FastAPI 严格验证响应模型。
+
+**错误示例**:
+```python
+# ❌ 错误
+return {"id": "res1", "status": "pending"}
+# 缺少必填字段
+```
+
+**正确做法**:
+```python
+# ✅ 正确
+return {
+    "id": "res1",
+    "status": "pending",
+    "visit_date": "2026-03-20",
+    "visit_time": 14,
+    # ... 所有必填字段
+}
+```
+
+**预防**:
+- 使用 Helper 函数生成完整数据
+- 运行测试验证响应
+- 检查清单包含"响应验证"项
+
+---
+
+## 🚀 效率提升
+
+### 1. 批量处理
+
+**方法**:
+```markdown
+## 批量任务
+
+请一次性完成以下任务:
+
+1. 创建预约 API
+2. 查询预约 API
+3. 撤回预约 API
+
+要求:
+- 使用相同的代码风格
+- 遵循相同的设计模式
+- 保持命名一致性
+
+输出:
+- 一次性输出所有代码
+- 统一运行所有测试
+- 一次性提交
+```
+
+**好处**:
+- ✅ 减少上下文切换
+- ✅ 保持代码一致性
+- ✅ 提高整体效率
+
+---
+
+### 2. 模板化
+
+**方法**:
+```markdown
+## 使用模板
+
+请按照以下模板实现:
+
+### API 层模板
+```python
+@router.post("/")
+async def create_xxx(...):
+    # 1. 验证
+    # 2. 创建
+    # 3. 返回
+```
+
+### 测试层模板
+```python
+async def test_create_xxx_success(...):
+    # 1. 登录
+    # 2. 创建
+    # 3. 验证
+```
+```
+
+**好处**:
+- ✅ 减少重复说明
+- ✅ 保持代码一致
+- ✅ 提高开发速度
+
+---
+
+### 3. 自动化
+
+**方法**:
+```markdown
+## 自动化流程
+
+1. 代码生成后自动运行测试
+2. 测试失败自动分析原因
+3. 自动修复简单问题
+4. 自动生成提交信息
+
+命令:
+```bash
+uv run pytest tests/ -v
+uv run ruff check .
+uv run black .
+git commit -m "feat: xxx"
+```
+```
+
+**好处**:
+- ✅ 减少人工操作
+- ✅ 降低出错概率
+- ✅ 提高整体效率
+
+---
+
+### 4. 知识沉淀
+
+**方法**:
+```markdown
+## 经验记录
+
+每次遇到问题:
+1. 记录问题描述
+2. 分析根本原因
+3. 记录解决方案
+4. 更新检查清单
+5. 添加到经验文档
+
+文档位置:
+- `guides/ai-assisted-programming.md`
+- `checklists/before-commit.md`
+```
+
+**好处**:
+- ✅ 避免重复犯错
+- ✅ 持续改进质量
+- ✅ 团队知识沉淀
+
+---
+
+## 📊 效果评估
+
+### 评估指标
+
+| 指标 | 目标 | 测量方法 |
+|------|------|----------|
+| 测试通过率 | > 98% | pytest 输出 |
+| 代码审查一次通过率 | > 60% | PR 统计 |
+| 平均修改轮次 | < 2 轮 | PR 统计 |
+| 严重问题遗漏 | 0 | 生产问题统计 |
+| 开发效率提升 | > 50% | 时间对比 |
+
+### 持续改进
+
+```markdown
+## 每周回顾
+
+1. 统计本周指标
+2. 分析存在的问题
+3. 更新检查清单
+4. 分享最佳实践
+
+## 每月总结
+
+1. 回顾月度指标
+2. 识别系统性问题
+3. 优化工作流程
+4. 更新培训材料
+```
+
+---
+
+## 🔗 相关资源
+
+### 内部文档
+- [AI 辅助编程最佳实践](../guides/ai-assisted-programming.md)
+- [提交前检查清单](../checklists/before-commit.md)
+- [代码审查清单](../checklists/code-review.md)
+- [FastAPI 经验总结](../guides/frameworks/fastapi-lessons.md)
+- [Pytest 测试实践](../guides/tools/pytest-practices.md)
+
+### 外部资源
+- [Cursor Rules](https://cursor.sh/docs/rules)
+- [Claude Code Skills](https://claude.ai/code)
+- [Google Code Review](https://google.github.io/eng-practices/)
+
+---
+
+## 📈 持续改进
+
+### 如何更新本指南
+
+1. **发现新问题** → 记录到"常见陷阱"
+2. **发现新技巧** → 添加到"效率提升"
+3. **发现新陷阱** → 添加到"常见陷阱"
+4. **定期回顾** → 删除过时内容
+
+### 贡献方式
+
+1. Fork 本仓库
+2. 添加你的经验
+3. 提交 PR
+4. 团队评审后合并
+
+---
+
+**维护者**: NRI Beijing Development Team  
+**创建日期**: 2026-03-15  
+**最后更新**: 2026-03-15  
+**版本**: v1.0

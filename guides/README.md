@@ -19,6 +19,7 @@
 ### 🤖 AI 辅助编程
 
 - **[AI 辅助编程最佳实践](ai-assisted-programming.md)** ⭐ 必读 - 单 Agent 工作流、检查清单、实战经验
+- **[AI 进阶技巧](ai-advanced-tips.md)** 🆕 上下文管理、任务拆解、常见陷阱、效率提升
 
 ### 🗣️ 语言类 (Languages)
 

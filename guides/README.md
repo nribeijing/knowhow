@@ -21,6 +21,7 @@
 - **[AI 辅助编程最佳实践](ai-assisted-programming.md)** ⭐ 必读 - 单 Agent 工作流、检查清单、实战经验
 - **[AI 进阶技巧](ai-advanced-tips.md)** 🆕 上下文管理、任务拆解、常见陷阱、效率提升
 - **[OpenClaw 使用指南](openclaw-usage.md)** 🆕 配置建议、技能使用、效率提升
+- **[AI 价值分析](ai-value-analysis.md)** 🆕 人类 vs AI 无 KnowHow vs AI 有 KnowHow 三方对比
 
 ### 🗣️ 语言类 (Languages)
 

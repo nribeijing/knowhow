@@ -23,30 +23,30 @@
 - **[OpenClaw 使用指南](openclaw-usage.md)** 🆕 配置建议、技能使用、效率提升
 - **[AI 价值分析](ai-value-analysis.md)** 🆕 人类 vs AI 无 KnowHow vs AI 有 KnowHow 三方对比
 
-### 🗣️ 语言类 (Languages)
+### 🗣️ 语言类 (Languages) ⏳
 
-- [Python 实战技巧](languages/python-tips.md) - Python 开发中的经验和技巧
-- [TypeScript 最佳实践](languages/typescript-tips.md) - TypeScript 使用心得
+- [ ] Python 实战技巧 (待创建)
+- [ ] TypeScript 最佳实践 (待创建)
 
-### 🛠️ 框架类 (Frameworks)
+### 🛠️ 框架类 (Frameworks) ✅
 
-- [FastAPI 经验总结](frameworks/fastapi-lessons.md) - FastAPI 实战中的教训和技巧
-- [Vue3 开发模式](frameworks/vue3-patterns.md) - Vue3 组件设计模式
-- [SQLAlchemy 陷阱](frameworks/sqlalchemy-traps.md) - ORM 使用中的常见错误
+- ✅ [FastAPI 经验总结](frameworks/fastapi-lessons.md) - FastAPI 实战中的教训和技巧
+- [ ] Vue3 开发模式 (待创建)
+- [ ] SQLAlchemy 陷阱 (待创建)
 
-### 🔧 工具类 (Tools)
+### 🔧 工具类 (Tools) ✅
 
-- [Git 高级技巧](tools/git-advanced.md) - Git 工作流和高级命令
-- [Docker 踩坑记录](tools/docker-lessons.md) - 容器化过程中的问题
-- [ElasticSearch 指南](tools/elasticsearch-guide.md) - ES 查询和优化
-- [Pytest 测试实践](tools/pytest-practices.md) - 单元测试最佳实践
+- [ ] Git 高级技巧 (待创建)
+- [ ] Docker 踩坑记录 (待创建)
+- [ ] ElasticSearch 指南 (待创建)
+- ✅ [Pytest 测试实践](tools/pytest-practices.md) - 单元测试最佳实践
 
-### ⚠️ 易错点 (Common Pitfalls)
+### ⚠️ 易错点 (Common Pitfalls) ✅
 
-- [认证授权陷阱](common-pitfalls/authentication-gotchas.md) - JWT、Cookie、权限验证
-- [数据库迁移注意事项](common-pitfalls/database-migrations.md) - Alembic 迁移规范
-- [API 设计误区](common-pitfalls/api-design-mistakes.md) - RESTful API 设计教训
-- [测试 Mock 陷阱](common-pitfalls/mock-traps.md) - 单元测试 Mock 技巧
+- ✅ [认证授权陷阱](common-pitfalls/authentication-gotchas.md) - JWT、Cookie、权限验证
+- [ ] 数据库迁移注意事项 (待创建)
+- [ ] API 设计误区 (待创建)
+- [ ] 测试 Mock 陷阱 (待创建)
 
 ---
 
@@ -139,13 +139,16 @@
 
 ## 📊 维护状态
 
-| 分类 | 文档数 | 最后更新 |
-|------|--------|----------|
-| Languages | 0 | - |
-| Frameworks | 0 | - |
-| Tools | 0 | - |
-| Common Pitfalls | 0 | - |
+| 分类 | 文档数 | 最后更新 | 状态 |
+|------|--------|----------|------|
+| **AI 辅助编程** | 4 篇 | 2026-03-15 | ✅ 完成 |
+| **Frameworks** | 1 篇 | 2026-03-15 | ✅ fastapi-lessons.md |
+| **Tools** | 1 篇 | 2026-03-15 | ✅ pytest-practices.md |
+| **Common Pitfalls** | 1 篇 | 2026-03-15 | ✅ authentication-gotchas.md |
+| **Languages** | 0 篇 | - | ⏳ 计划中 |
+| **设计最佳实践** | 1 篇 | 2026-03-15 | ✅ design-best-practices.md |
 
+**总计**: 8 篇文档  
 **目标**: 每月至少新增 2 篇经验文档
 
 ---

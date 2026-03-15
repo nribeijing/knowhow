@@ -16,6 +16,10 @@
 
 ## 📚 目录导航
 
+### 🤖 AI 辅助编程
+
+- **[AI 辅助编程最佳实践](ai-assisted-programming.md)** ⭐ 必读 - 单 Agent 工作流、检查清单、实战经验
+
 ### 🗣️ 语言类 (Languages)
 
 - [Python 实战技巧](languages/python-tips.md) - Python 开发中的经验和技巧

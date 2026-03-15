@@ -127,8 +127,8 @@
 
 ## 📚 参考资源
 
-- [代码审查清单](../checklists/code-review.md)
-- [提交前检查清单](../checklists/before-commit.md)
+- [代码审查清单](../../checklists/code-review.md)
+- [提交前检查清单](../../checklists/before-commit.md)
 - [代码审查规则](../rules/general/code-review.rule)
 
 ---

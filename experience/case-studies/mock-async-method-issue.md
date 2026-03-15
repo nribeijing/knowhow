@@ -251,8 +251,8 @@ mock_service.get_all = mock_get_all  # ✅
 
 ### 内部文档
 - [测试策略](../../design/07-testing.md#mock-异步方法)
-- [Pytest 测试实践](../guides/tools/pytest-practices.md)
-- [提交前检查清单](../checklists/before-commit.md)
+- [Pytest 测试实践](../technical/pytest-practices.md)
+- [提交前检查清单](../../checklists/before-commit.md)
 
 ### 外部资源
 - [unittest.mock 文档](https://docs.python.org/3/library/unittest.mock.html)

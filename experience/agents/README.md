@@ -68,7 +68,7 @@
 
 ### 4. 按检查清单验证
 
-使用 [提交前检查清单](../checklists/before-commit.md) 验证 AI 输出。
+使用 [提交前检查清单](../../checklists/before-commit.md) 验证 AI 输出。
 
 ---
 
@@ -295,7 +295,7 @@
 
 建议将具体路由 (/admin) 放在参数路由 (/{id}) 之前。
 
-参考：[FastAPI 经验总结](../guides/frameworks/fastapi-lessons.md)
+参考：[FastAPI 经验总结](../technical/fastapi-lessons.md)
 ```
 
 **❌ 不好的做法**:
@@ -385,9 +385,9 @@ AI: 已分析任务
 
 ### 内部文档
 - [AI 辅助编程最佳实践](../guides/ai-assisted-programming.md)
-- [提交前检查清单](../checklists/before-commit.md)
-- [代码审查清单](../checklists/code-review.md)
-- [FastAPI 经验总结](../guides/frameworks/fastapi-lessons.md)
+- [提交前检查清单](../../checklists/before-commit.md)
+- [代码审查清单](../../checklists/code-review.md)
+- [FastAPI 经验总结](../technical/fastapi-lessons.md)
 
 ### 外部资源
 - [Cursor Rules](https://cursor.sh/docs/rules)

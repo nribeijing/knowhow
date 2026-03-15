@@ -262,8 +262,8 @@ FastAPI 按定义顺序匹配路由，必须遵循：
 
 ### 内部文档
 - [API 设计规范](../../design/04-api-design.md#路由定义规范)
-- [FastAPI 经验总结](../guides/frameworks/fastapi-lessons.md)
-- [提交前检查清单](../checklists/before-commit.md)
+- [FastAPI 经验总结](../technical/fastapi-lessons.md)
+- [提交前检查清单](../../checklists/before-commit.md)
 
 ### 外部资源
 - [FastAPI 路由文档](https://fastapi.tiangolo.com/tutorial/path-params/)

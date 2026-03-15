@@ -264,17 +264,12 @@ LLM：已检查，发现以下问题：
 
 ## 十、案例参考
 
-详见 [case-studies/](../case-studies/) 目录：
-
-- [API 斜杠问题](./case-studies/api-slash-issue.md)
-- [ES 查询问题](./case-studies/es-keyword-issue.md)
-- [浏览器缓存问题](./case-studies/browser-cache.md)
+详见 [experience/case-studies/](../../experience/case-studies/) 目录。
 
 ---
 
 **相关文档**:
-- [任务描述模板](./task-description-template.md)
-- [上下文提供指南](./context-guidelines.md)
-- [案例研究](../case-studies/)
+- [任务描述模板](../../experience/templates/task-description-template.md)
+- [案例研究](../../experience/case-studies/)
 
 **最后更新**: 2026-03-14

@@ -235,7 +235,7 @@
 
 建议将具体路由 (/admin) 放在参数路由 (/{id}) 之前。
 
-参考：[FastAPI 经验总结](../guides/frameworks/fastapi-lessons.md)
+参考：[FastAPI 经验总结](../technical/fastapi-lessons.md)
 ```
 
 **❌ 不好的做法**:
@@ -516,7 +516,7 @@ git commit -m "feat: xxx"
 
 文档位置:
 - `guides/ai-assisted-programming.md`
-- `checklists/before-commit.md`
+- `../checklists/before-commit.md`
 ```
 
 **好处**:
@@ -562,10 +562,10 @@ git commit -m "feat: xxx"
 
 ### 内部文档
 - [AI 辅助编程最佳实践](../guides/ai-assisted-programming.md)
-- [提交前检查清单](../checklists/before-commit.md)
-- [代码审查清单](../checklists/code-review.md)
-- [FastAPI 经验总结](../guides/frameworks/fastapi-lessons.md)
-- [Pytest 测试实践](../guides/tools/pytest-practices.md)
+- [提交前检查清单](../../checklists/before-commit.md)
+- [代码审查清单](../../checklists/code-review.md)
+- [FastAPI 经验总结](../technical/fastapi-lessons.md)
+- [Pytest 测试实践](../technical/pytest-practices.md)
 
 ### 外部资源
 - [Cursor Rules](https://cursor.sh/docs/rules)

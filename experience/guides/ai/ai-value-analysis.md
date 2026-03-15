@@ -578,8 +578,8 @@ AI 有 KnowHow:
 - [AI 辅助编程最佳实践](guides/ai-assisted-programming.md)
 - [AI 进阶技巧](guides/ai-advanced-tips.md)
 - [OpenClaw 使用指南](guides/openclaw-usage.md)
-- [提交前检查清单](checklists/before-commit.md)
-- [代码审查清单](checklists/code-review.md)
+- [提交前检查清单](../checklists/before-commit.md)
+- [代码审查清单](../checklists/code-review.md)
 
 ### 外部资源
 - [Google Code Review](https://google.github.io/eng-practices/)

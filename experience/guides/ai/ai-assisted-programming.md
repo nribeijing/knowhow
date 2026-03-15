@@ -107,8 +107,8 @@ API 层测试 → 用测试 DB (验证 SQL)
 - `path/to/file.py`
 
 **适用 Rules**:
-- [API 斜杠规则](../rules/general/api-slash.rule)
-- [代码审查规则](../rules/general/code-review.rule)
+- [API 斜杠规则](../../../knowledge/rules/api-slash.rule)
+- [代码审查规则](../../../knowledge/rules/code-review.rule)
 ```
 
 #### 2. 编写代码 (AI)
@@ -162,8 +162,8 @@ API 层测试 → 用测试 DB (验证 SQL)
 #### 5. 按清单自查 (AI)
 
 **使用检查清单**:
-- [提交前检查清单](checklists/before-commit.md)
-- [代码审查清单](checklists/code-review.md)
+- [提交前检查清单](../../../checklists/before-commit.md)
+- [代码审查清单](../../../checklists/code-review.md)
 
 **AI 自查 Prompt**:
 ```
@@ -523,11 +523,11 @@ return {
 ## 📚 相关资源
 
 ### 内部文档
-- [FastAPI 经验总结](../guides/frameworks/fastapi-lessons.md)
-- [Pytest 测试实践](../guides/tools/pytest-practices.md)
-- [认证授权陷阱](../guides/common-pitfalls/authentication-gotchas.md)
-- [提交前检查清单](checklists/before-commit.md)
-- [代码审查清单](checklists/code-review.md)
+- [FastAPI 经验总结](../technical/fastapi-lessons.md)
+- [Pytest 测试实践](../technical/pytest-practices.md)
+- [认证授权陷阱](../technical/authentication-gotchas.md)
+- [提交前检查清单](../../../checklists/before-commit.md)
+- [代码审查清单](../../../checklists/code-review.md)
 
 ### 外部资源
 - [Cursor Rules](https://cursor.sh/docs/rules)

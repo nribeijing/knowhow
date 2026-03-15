@@ -251,8 +251,8 @@
 ### 内部文档
 - [代码审查清单](code-review.md)
 - [AI 辅助编程最佳实践](../guides/ai-assisted-programming.md)
-- [FastAPI 经验总结](../guides/frameworks/fastapi-lessons.md)
-- [Pytest 测试实践](../guides/tools/pytest-practices.md)
+- [FastAPI 经验总结](../technical/fastapi-lessons.md)
+- [Pytest 测试实践](../technical/pytest-practices.md)
 
 ### 外部资源
 - [Google Code Review](https://google.github.io/eng-practices/)

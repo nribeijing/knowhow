@@ -16,41 +16,26 @@
 
 ## 📚 目录导航
 
-### 🤖 AI 辅助编程
+### 🤖 AI 辅助编程 (ai/)
 
-- **[AI 辅助编程最佳实践](ai-assisted-programming.md)** ⭐ 必读 - 单 Agent 工作流、检查清单、实战经验
-- **[AI 进阶技巧](ai-advanced-tips.md)** 🆕 上下文管理、任务拆解、常见陷阱、效率提升
-- **[OpenClaw 使用指南](openclaw-usage.md)** 🆕 配置建议、技能使用、效率提升
-- **[AI 价值分析](ai-value-analysis.md)** 🆕 人类 vs AI 无 KnowHow vs AI 有 KnowHow 三方对比
+- **[AI 辅助编程最佳实践](ai/ai-assisted-programming.md)** ⭐ 必读
+- **[AI 进阶技巧](ai/ai-advanced-tips.md)** - 上下文管理、任务拆解
+- **[OpenClaw 使用指南](ai/openclaw-usage.md)** - 配置建议、技能使用
+- **[AI 价值分析](ai/ai-value-analysis.md)** - 人类 vs AI 三方对比
 
 ### 🏢 行业最佳实践
 
-- **[IT 团队工作流程](industry-workflow.md)** 🆕 Google/Amazon/Microsoft 研发流程对比
+- **[IT 团队工作流程](workflow/industry-workflow.md)** - Google/Amazon/Microsoft 研发流程
 
-### 🗣️ 语言类 (Languages) ⏳
+### 🛠️ 技术经验 (technical/)
 
-- [ ] Python 实战技巧 (待创建)
-- [ ] TypeScript 最佳实践 (待创建)
+- ✅ **[FastAPI 经验总结](technical/fastapi-lessons.md)** - FastAPI 实战教训
+- ✅ **[Pytest 测试实践](technical/pytest-practices.md)** - 单元测试最佳实践
+- ✅ **[认证授权陷阱](technical/authentication-gotchas.md)** - JWT、Cookie、权限验证
 
-### 🛠️ 框架类 (Frameworks) ✅
+### 📐 设计经验 (design/)
 
-- ✅ [FastAPI 经验总结](frameworks/fastapi-lessons.md) - FastAPI 实战中的教训和技巧
-- [ ] Vue3 开发模式 (待创建)
-- [ ] SQLAlchemy 陷阱 (待创建)
-
-### 🔧 工具类 (Tools) ✅
-
-- [ ] Git 高级技巧 (待创建)
-- [ ] Docker 踩坑记录 (待创建)
-- [ ] ElasticSearch 指南 (待创建)
-- ✅ [Pytest 测试实践](tools/pytest-practices.md) - 单元测试最佳实践
-
-### ⚠️ 易错点 (Common Pitfalls) ✅
-
-- ✅ [认证授权陷阱](common-pitfalls/authentication-gotchas.md) - JWT、Cookie、权限验证
-- [ ] 数据库迁移注意事项 (待创建)
-- [ ] API 设计误区 (待创建)
-- [ ] 测试 Mock 陷阱 (待创建)
+- ✅ **[设计最佳实践](design/design-best-practices.md)** - 行业标准、改进建议
 
 ---
 
@@ -146,23 +131,21 @@
 | 分类 | 文档数 | 最后更新 | 状态 |
 |------|--------|----------|------|
 | **AI 辅助编程** | 4 篇 | 2026-03-15 | ✅ 完成 |
-| **Frameworks** | 1 篇 | 2026-03-15 | ✅ fastapi-lessons.md |
-| **Tools** | 1 篇 | 2026-03-15 | ✅ pytest-practices.md |
-| **Common Pitfalls** | 1 篇 | 2026-03-15 | ✅ authentication-gotchas.md |
-| **Languages** | 0 篇 | - | ⏳ 计划中 |
-| **设计最佳实践** | 1 篇 | 2026-03-15 | ✅ design-best-practices.md |
+| **技术经验** | 3 篇 | 2026-03-15 | ✅ 完成 |
+| **设计经验** | 1 篇 | 2026-03-15 | ✅ 完成 |
+| **行业最佳实践** | 1 篇 | 2026-03-15 | ✅ 完成 |
 
-**总计**: 8 篇文档  
+**总计**: 9 篇文档  
 **目标**: 每月至少新增 2 篇经验文档
 
 ---
 
 ## 🔗 相关资源
 
-- [Rules 目录](../rules/README.md) - 强制性规则
-- [Skills 目录](../skills/README.md) - 技能系统
-- [Case Studies](../case-studies/) - 案例研究
-- [Templates](../templates/) - 文档模板
+- **[Rules 目录](../../knowledge/rules/)** - 强制性规则
+- **[Skills 目录](../../skills/)** - 技能系统
+- **[Case Studies](../case-studies/)** - 案例研究
+- **[Templates](../templates/)** - 文档模板
 
 ---
 

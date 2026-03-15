@@ -23,6 +23,10 @@
 - **[OpenClaw 使用指南](openclaw-usage.md)** 🆕 配置建议、技能使用、效率提升
 - **[AI 价值分析](ai-value-analysis.md)** 🆕 人类 vs AI 无 KnowHow vs AI 有 KnowHow 三方对比
 
+### 🏢 行业最佳实践
+
+- **[IT 团队工作流程](industry-workflow.md)** 🆕 Google/Amazon/Microsoft 研发流程对比
+
 ### 🗣️ 语言类 (Languages) ⏳
 
 - [ ] Python 实战技巧 (待创建)
